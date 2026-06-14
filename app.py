@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import ranker
 from pathlib import Path
+import plotly.express as px
 
 # Configure page layout and style
 st.set_page_config(
@@ -306,6 +307,91 @@ with tab_list:
             },
             hide_index=True
         )
+        
+        # Show Shortlist Analytics
+        st.write("")
+        st.markdown("### 📊 Shortlist Cohort Analytics")
+        if filtered_ranked:
+            top_100 = filtered_ranked[:100]
+            avg_exp = np.mean([c["years_exp"] for c in top_100])
+            avg_notice = np.mean([c["candidate_raw"].get("redrob_signals", {}).get("notice_period_days", 90) for c in top_100])
+            
+            # Count locations
+            loc_counts = {}
+            for c in top_100:
+                loc = c["location"].split(",")[0].strip()
+                loc_counts[loc] = loc_counts.get(loc, 0) + 1
+                
+            # Count top skills
+            skill_counts = {}
+            for c in top_100:
+                for s in c["candidate_raw"].get("skills", []):
+                    sname = s.get("name")
+                    skill_counts[sname] = skill_counts.get(sname, 0) + 1
+            sorted_skills = sorted(skill_counts.items(), key=lambda x: x[1], reverse=True)[:4]
+            
+            sa1, sa2, sa3 = st.columns([1, 1.2, 1.2])
+            with sa1:
+                avg_score = np.mean([c["score"] for c in top_100])
+                st.markdown(f"<div style='margin-bottom: 1rem;'>💼 <b>Average Experience</b><br><span style='font-size: 1.5rem; font-weight: 700; color: #38BDF8;'>{avg_exp:.1f} Years</span></div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='margin-bottom: 1rem;'>📅 <b>Average Notice Period</b><br><span style='font-size: 1.5rem; font-weight: 700; color: #38BDF8;'>{avg_notice:.1f} Days</span></div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='margin-bottom: 1rem;'>📈 <b>Average Fit Score</b><br><span style='font-size: 1.5rem; font-weight: 700; color: #00E5FF;'>{avg_score:.3f}</span></div>", unsafe_allow_html=True)
+            with sa2:
+                st.markdown("**📍 Top Locations**")
+                df_loc = pd.DataFrame(list(loc_counts.items()), columns=["Location", "Candidates"]).sort_values(by="Candidates", ascending=True).tail(5)
+                fig_loc = px.bar(
+                    df_loc, 
+                    x="Candidates", 
+                    y="Location", 
+                    orientation="h",
+                    color="Candidates",
+                    color_continuous_scale=["#1E3A8A", "#38BDF8", "#00E5FF"],
+                    text="Candidates"
+                )
+                fig_loc.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font_color="#F3F4F6",
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    height=200,
+                    coloraxis_showscale=False,
+                    xaxis=dict(showgrid=False, zeroline=False, visible=False),
+                    yaxis=dict(showgrid=False, zeroline=False, tickfont=dict(size=11))
+                )
+                fig_loc.update_traces(
+                    textposition="inside",
+                    marker_line_color="rgba(0,0,0,0)",
+                    hovertemplate="<b>%{y}</b><br>Candidates: %{x}<extra></extra>"
+                )
+                st.plotly_chart(fig_loc, use_container_width=True, config={'displayModeBar': False})
+            with sa3:
+                st.markdown("**⚡ Core Skill Coverage**")
+                df_skills = pd.DataFrame(sorted_skills, columns=["Skill", "Candidates"]).sort_values(by="Candidates", ascending=False)
+                fig_skills = px.bar(
+                    df_skills,
+                    x="Skill",
+                    y="Candidates",
+                    color="Candidates",
+                    color_continuous_scale=["#1E3A8A", "#38BDF8", "#00E5FF"],
+                    text="Candidates"
+                )
+                fig_skills.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font_color="#F3F4F6",
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    height=200,
+                    coloraxis_showscale=False,
+                    yaxis=dict(showgrid=False, zeroline=False, visible=False),
+                    xaxis=dict(showgrid=False, zeroline=False, tickangle=-15, tickfont=dict(size=11))
+                )
+                fig_skills.update_traces(
+                    textposition="inside",
+                    marker_line_color="rgba(0,0,0,0)",
+                    hovertemplate="<b>%{x}</b><br>Candidates: %{y}<extra></extra>"
+                )
+                st.plotly_chart(fig_skills, use_container_width=True, config={'displayModeBar': False})
+        st.write("")
         
         # Download Shortlist CSV Button
         # Create CSV text

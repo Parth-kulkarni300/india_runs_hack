@@ -1,5 +1,9 @@
 import datetime
 import re
+import os
+import json
+from pathlib import Path
+import numpy as np
 
 # Dictionary of real-world company founding years
 FOUNDING_YEARS = {
@@ -24,6 +28,39 @@ CONSULTING_COMPANIES = {
 
 CURRENT_REF_DATE = datetime.datetime(2026, 6, 11)
 
+# Neural embedding cache variables
+CANDIDATE_EMBEDDINGS = None
+CANDIDATE_ID_TO_INDEX = {}
+EMBEDDINGS_LOADED = False
+
+# Attempt to load precomputed embeddings
+EMBEDDINGS_FILE = Path("candidate_embeddings.npy")
+IDS_FILE = Path("candidate_ids.json")
+
+if EMBEDDINGS_FILE.exists() and IDS_FILE.exists():
+    try:
+        CANDIDATE_EMBEDDINGS = np.load(EMBEDDINGS_FILE)
+        with open(IDS_FILE, "r") as f:
+            ids_list = json.load(f)
+        CANDIDATE_ID_TO_INDEX = {cid: idx for idx, cid in enumerate(ids_list)}
+        EMBEDDINGS_LOADED = True
+        print(f"Loaded {CANDIDATE_EMBEDDINGS.shape[0]} precomputed candidate embeddings.")
+    except Exception as e:
+        print(f"Warning: Failed to load precomputed embeddings: {e}")
+
+# Global SentenceTransformer model reference (loaded only when needed)
+SENTENCE_MODEL = None
+
+def get_sentence_model():
+    global SENTENCE_MODEL
+    if SENTENCE_MODEL is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            SENTENCE_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+        except Exception as e:
+            print(f"Warning: Failed to load SentenceTransformer: {e}")
+    return SENTENCE_MODEL
+
 def parse_date(date_str):
     if not date_str:
         return None
@@ -34,7 +71,7 @@ def parse_date(date_str):
 
 def is_honeypot(cand):
     """
-    Check for database inconsistencies and logical contradictions that identify honeypot candidates.
+    Check for database inconsistencies and logical contradictions that identify honeypots.
     Returns: (is_honeypot_bool, reason_string)
     """
     signals = cand.get("redrob_signals", {})
@@ -251,10 +288,9 @@ def calculate_availability_multiplier(cand):
 def generate_reasoning(cand, rank):
     """
     Programmatically generate a customized, fact-grounded recruiter reasoning for Stage 4 review.
-    Does not hallucinate, connect to JD, and adapts tone to rank.
+    Does not hallucinate, connects to JD, and adapts tone to rank.
     """
     profile = cand.get("profile", {})
-    name = profile.get("anonymized_name", "Candidate")
     exp = profile.get("years_of_experience", 0.0)
     title = profile.get("current_title", "Engineer")
     signals = cand.get("redrob_signals", {})
@@ -264,7 +300,6 @@ def generate_reasoning(cand, rank):
     matching_skills = [s["name"] for s in cand.get("skills", []) if s["name"].lower() in vdb_skills]
     
     skills_str = f"with depth in {', '.join(matching_skills[:2])}" if matching_skills else "with strong backend skills"
-    
     notice_str = f"{signals.get('notice_period_days')}d notice"
     
     if rank <= 10:
@@ -284,13 +319,12 @@ def generate_reasoning(cand, rank):
             f"Highly active on platform.{concern}"
         )
     else:
-        # Ranks 51-100: adjacent skills or longer notice
         return (
             f"Solid backend/data profile with adjacent ML exposure ({exp:.1f} yrs experience). "
             f"Good foundational skills, though less direct vector search production experience; serves as a high-quality filler."
         )
 
-def score_candidate(cand):
+def score_candidate(cand, semantic_similarity=None):
     """
     Process filters and return final score if valid, else None.
     """
@@ -329,8 +363,14 @@ def score_candidate(cand):
         return None
         
     skill_s = calculate_skill_score(cand)
-    hist_s = calculate_history_score(cand)
     
+    # NLP Match: check if precomputed semantic similarity is provided, otherwise fallback to keyword search
+    if semantic_similarity is not None:
+        # Cosine similarity is in [-1, 1], usually [0.2, 0.8] for text. Scale to [0, 1] for scoring.
+        nlp_s = max(0.0, semantic_similarity)
+    else:
+        nlp_s = calculate_history_score(cand)
+        
     # 3. Availability Multiplier & Interest
     availability_mult = calculate_availability_multiplier(cand)
     
@@ -340,7 +380,7 @@ def score_candidate(cand):
     saved = signals.get("saved_by_recruiters_30d", 0)
     interest_score = min((views * 2 + searches * 0.1 + saved * 5) / 100.0, 0.3)
     
-    base_score = title_s * 0.4 + skill_s * 0.3 + hist_s * 0.3
+    base_score = title_s * 0.4 + skill_s * 0.3 + nlp_s * 0.3
     final_score = base_score * availability_mult + interest_score
     
     return {
@@ -355,13 +395,35 @@ def score_candidate(cand):
         "candidate_raw": cand  # keep reference for detail display
     }
 
-def rank_candidates(candidates_list):
+def rank_candidates(candidates_list, jd_text=""):
     """
     Ranks a list of candidate dictionaries.
+    Uses precomputed neural embeddings if available.
     """
+    similarities_dict = {}
+    
+    # If precomputed embeddings exist and JD is provided, compute semantic scores
+    if EMBEDDINGS_LOADED and jd_text:
+        model = get_sentence_model()
+        if model is not None:
+            try:
+                # Generate embedding for the JD (normalized)
+                jd_embedding = model.encode(jd_text, normalize_embeddings=True)
+                # Compute dot products (since both are normalized, this equals cosine similarity)
+                similarities = np.dot(CANDIDATE_EMBEDDINGS, jd_embedding)
+                
+                # Build dictionary for candidate lookup
+                for cid, idx in CANDIDATE_ID_TO_INDEX.items():
+                    similarities_dict[cid] = float(similarities[idx])
+            except Exception as e:
+                print(f"Warning: Failed to compute semantic similarity: {e}")
+                
     scored = []
     for c in candidates_list:
-        res = score_candidate(c)
+        cid = c["candidate_id"]
+        sem_sim = similarities_dict.get(cid, None)
+        
+        res = score_candidate(c, semantic_similarity=sem_sim)
         if res is not None:
             scored.append(res)
             
