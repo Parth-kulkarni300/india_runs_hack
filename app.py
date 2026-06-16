@@ -24,9 +24,163 @@ st.markdown("""
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
         
+        /* Sidebar styling overrides */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #07090E 0%, #0F1420 100%) !important;
+            border-right: 1px solid rgba(56, 189, 248, 0.12) !important;
+            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.6) !important;
+        }
+        
+        /* Customize sidebar scrollbar */
+        [data-testid="stSidebar"]::-webkit-scrollbar {
+            width: 4px;
+        }
+        [data-testid="stSidebar"]::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.2);
+            border-radius: 2px;
+        }
+        [data-testid="stSidebar"]::-webkit-scrollbar-thumb:hover {
+            background: #00E5FF;
+        }
+        
+        /* Sidebar Labels Styling */
+        [data-testid="stSidebar"] label[data-testid="stWidgetLabel"] p {
+            font-family: 'Outfit', sans-serif !important;
+            font-weight: 600 !important;
+            color: #E5E7EB !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
+            font-size: 0.8rem !important;
+        }
+        
+        [data-testid="stSidebar"] [data-testid="stTextInput"] input,
+        [data-testid="stSidebar"] [data-testid="stTextarea"] textarea {
+            background-color: rgba(15, 23, 42, 0.5) !important;
+            border: 1px solid rgba(56, 189, 248, 0.2) !important;
+            color: #F3F4F6 !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        [data-testid="stSidebar"] [data-testid="stTextInput"] input:focus,
+        [data-testid="stSidebar"] [data-testid="stTextarea"] textarea:focus {
+            border-color: #00E5FF !important;
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.3) !important;
+            background-color: rgba(15, 23, 42, 0.7) !important;
+        }
+        
+        [data-testid="stSidebar"] [data-testid="stFileUploader"] {
+            background-color: rgba(15, 23, 42, 0.3) !important;
+            border: 1px dashed rgba(56, 189, 248, 0.25) !important;
+            border-radius: 8px !important;
+            padding: 12px !important;
+        }
+        
+        [data-testid="stSidebar"] [data-testid="stFileUploader"] button {
+            background-color: rgba(56, 189, 248, 0.1) !important;
+            color: #38BDF8 !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-radius: 6px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        [data-testid="stSidebar"] [data-testid="stFileUploader"] button:hover {
+            background-color: rgba(0, 229, 255, 0.15) !important;
+            color: #00E5FF !important;
+            border-color: #00E5FF !important;
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.25) !important;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0E14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E293B;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #38BDF8;
+        }
+        
         /* Global Streamlit elements overrides */
         .stApp {
             background-color: #0B0E14;
+        }
+        
+        /* Streamlit Tab Styling Override */
+        button[data-baseweb="tab"] {
+            font-family: 'Outfit', sans-serif !important;
+            font-size: 1.05rem !important;
+            font-weight: 600 !important;
+            color: #9CA3AF !important;
+            background-color: transparent !important;
+            border: none !important;
+            padding: 10px 20px !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+        button[data-baseweb="tab"]:hover {
+            color: #38BDF8 !important;
+        }
+        button[data-baseweb="tab"][aria-selected="true"] {
+            color: #00E5FF !important;
+            border-bottom: 2px solid #00E5FF !important;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+        }
+        
+        /* Custom Neon Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            margin: 2px;
+        }
+        .badge-green {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34D399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .badge-yellow {
+            background: rgba(245, 158, 11, 0.1);
+            color: #FBBF24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .badge-red {
+            background: rgba(239, 68, 68, 0.1);
+            color: #F87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .badge-blue {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38BDF8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+        
+        /* Pulsate Animation */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+        .pulse-active {
+            width: 8px;
+            height: 8px;
+            background-color: currentColor;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px currentColor;
+            animation: pulse-glow 2s infinite;
         }
         
         .main-title {
@@ -62,7 +216,7 @@ st.markdown("""
         .metric-card:hover {
             transform: translateY(-5px);
             border-color: rgba(0, 229, 255, 0.5);
-            box-shadow: 0 12px 40px 0 rgba(0, 229, 255, 0.15);
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.25);
         }
         
         .metric-num {
@@ -189,8 +343,19 @@ st.markdown("<div class='main-title'>🧠 Redrob AI Recruiter Brain</div>", unsa
 st.markdown("<div class='sub-title'>Intelligent Candidate Discovery, Trap Filtering, and Predictive Ranking Dashboard</div>", unsafe_allow_html=True)
 
 # Sidebar Configuration
-st.sidebar.image("https://img.icons8.com/clouds/200/brain.png", width=100)
-st.sidebar.markdown("### Configuration & Input")
+st.sidebar.markdown("""
+    <div style="text-align: center; margin-bottom: 1rem; padding-top: 1rem;">
+        <img src="https://img.icons8.com/nolan/96/brain.png" style="width: 70px; filter: drop-shadow(0 0 12px rgba(0, 229, 255, 0.45));" />
+        <h2 style="font-family: 'Outfit', sans-serif; font-weight: 800; background: linear-gradient(90deg, #38BDF8, #00E5FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: 0.5rem; margin-bottom: 0.2rem; font-size: 1.35rem; letter-spacing: -0.02em;">RECRUIT COCKPIT</h2>
+        <p style="color: #9CA3AF; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 1.5rem;">Engine Control Center</p>
+    </div>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown("""
+    <div style="border-left: 3px solid #00E5FF; padding-left: 10px; margin: 1.2rem 0 0.8rem 0;">
+        <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #F3F4F6; margin: 0; font-size: 1rem; letter-spacing: 0.03em; text-transform: uppercase;">🔧 Configuration & Data</h4>
+    </div>
+""", unsafe_allow_html=True)
 
 # 1. Dataset File Path Input
 default_dataset_path = "../[PUB] India_runs_data_and_ai_challenge/India_runs_data_and_ai_challenge/candidates.jsonl"
@@ -223,7 +388,11 @@ if not candidates_list:
 jd_text = st.sidebar.text_area("Target Job Description", value=DEFAULT_JD, height=250)
 
 # 3. Interactive Filters
-st.sidebar.markdown("### Candidate Profile Filters")
+st.sidebar.markdown("""
+    <div style="border-left: 3px solid #38BDF8; padding-left: 10px; margin: 1.5rem 0 0.8rem 0;">
+        <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #F3F4F6; margin: 0; font-size: 1rem; letter-spacing: 0.03em; text-transform: uppercase;">🎯 Candidate Filters</h4>
+    </div>
+""", unsafe_allow_html=True)
 experience_range = st.sidebar.slider("Years of Experience", 0.0, 20.0, (5.0, 9.0), step=0.5)
 max_notice_period = st.sidebar.slider("Max Notice Period (days)", 0, 180, 90, step=15)
 only_relocate = st.sidebar.checkbox("Include only Noida/Pune or willing to relocate", value=True)
@@ -268,7 +437,7 @@ st.write("")
 st.write("")
 
 # Create Tabs
-tab_list, tab_dive, tab_matcher = st.tabs(["📋 Candidate Shortlist", "🔍 Profile Deep Dive", "📄 Resume Matcher"])
+tab_list, tab_dive, tab_matcher, tab_traps = st.tabs(["📋 Candidate Shortlist", "🔍 Profile Deep Dive", "📄 Resume Matcher", "🛡️ Defused Traps Audit"])
 
 # Tab 1: Shortlist
 with tab_list:
@@ -414,125 +583,297 @@ with tab_dive:
     if not filtered_ranked:
         st.info("Please adjust filters to view matching profiles.")
     else:
-        # Dropdown selection of candidates
-        c_names = [f"Rank {c['rank']}: {c['name']} ({c['candidate_id']})" for c in filtered_ranked[:100]]
-        selected_index = st.selectbox("Select Candidate to Inspect:", range(len(c_names)), format_func=lambda x: c_names[x])
-        
-        cand_data = filtered_ranked[selected_index]
-        cand_raw = cand_data["candidate_raw"]
-        profile = cand_raw.get("profile", {})
-        signals = cand_raw.get("redrob_signals", {})
-        
-        st.write("---")
-        
-        c1, c2 = st.columns([1.8, 1.2])
-        
-        with c1:
-            st.markdown(f"## {profile.get('anonymized_name')}")
-            st.markdown(f"**Headline**: {profile.get('headline')}")
-            st.write(f"📍 **Location**: {profile.get('location')}, {profile.get('country')} | 💼 **Experience**: {profile.get('years_of_experience')} Years")
+        # Select box and Compare checkbox side-by-side
+        col_select, col_compare = st.columns([2.2, 1.0])
+        with col_select:
+            c_names = [f"Rank {c['rank']}: {c['name']} ({c['candidate_id']})" for c in filtered_ranked[:100]]
+            selected_index = st.selectbox("Select Candidate to Inspect:", range(len(c_names)), format_func=lambda x: c_names[x])
+        with col_compare:
+            st.write("") # spacing
+            st.write("")
+            compare_mode = st.checkbox("📊 Compare Candidates", value=False, help="Select and compare up to 3 candidates side-by-side.")
             
-            # Recruiter reasoning
-            st.markdown("#### AI Recruiter Fit Analysis")
-            st.markdown(f"<div class='reasoning-box'>{cand_data['reasoning']}</div>", unsafe_allow_html=True)
-            
-            # Career History Timeline
-            st.markdown("#### Professional Timeline")
-            for job in cand_raw.get("career_history", []):
-                start = job.get("start_date", "N/A")
-                end = job.get("end_date") or "Present"
-                dur = job.get("duration_months", 0)
-                
-                st.markdown(f"""
-                    <div class='timeline-card'>
-                        <div class='timeline-dot'></div>
-                        <div class='timeline-company'>{job.get('company')} <span style='font-size:0.8rem; color:#9CA3AF;'>({job.get('company_size')} employees)</span></div>
-                        <div class='timeline-title'>{job.get('title')}</div>
-                        <div class='timeline-dates'>{start} to {end} ({dur} months) | Industry: {job.get('industry')}</div>
-                        <p style='margin-top:0.5rem; font-size:0.9rem; color:#D1D5DB;'>{job.get('description')}</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-            # Education Timeline
-            st.markdown("#### Education")
-            for edu in cand_raw.get("education", []):
-                tier_badge = f"<span style='color:#3B82F6;'>[{edu.get('tier', 'unknown').upper()}]</span>"
-                st.markdown(f"""
-                    <div class='timeline-card' style='border-left-color: #3B82F6;'>
-                        <div class='timeline-dot' style='background-color: #3B82F6;'></div>
-                        <div class='timeline-company'>{edu.get('institution')} {tier_badge}</div>
-                        <div class='timeline-title'>{edu.get('degree')} in {edu.get('field_of_study')}</div>
-                        <div class='timeline-dates'>{edu.get('start_year')} - {edu.get('end_year')} | Grade: {edu.get('grade')}</div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-        with c2:
-            st.markdown("### Platform Availability Envelope")
-            
-            # Color-coded signals dashboard
-            # Open to work
-            otw = signals.get("open_to_work_flag", False)
-            otw_color = "🟢 Available" if otw else "⚪ Passive"
-            
-            # Response rate
-            rrr = signals.get("recruiter_response_rate", 0.0)
-            rrr_color = "🟢 Excellent" if rrr >= 0.7 else ("🟡 Medium" if rrr >= 0.4 else "🔴 Low")
-            
-            # Notice Period
-            notice = signals.get("notice_period_days", 90)
-            notice_color = "🟢 Short" if notice <= 30 else ("🟡 Standard" if notice <= 60 else "🔴 Long")
-            
-            # Activity recency
-            last_active = signals.get("last_active_date", "")
-            active_days = 999
-            if last_active:
-                active_date = ranker.parse_date(last_active)
-                if active_date:
-                    active_days = (ranker.CURRENT_REF_DATE - active_date).days
-            
-            active_color = "🟢 Active Recently" if active_days <= 30 else ("🟡 Inactive" if active_days <= 180 else "🔴 Dormant")
-            
-            st.markdown(f"""
-                **Availability Indicators**:
-                - Status: **{otw_color}**
-                - Notice Period: **{notice} days** ({notice_color})
-                - Recruiter Response Rate: **{rrr*100:.0f}%** ({rrr_color})
-                - Last Active: **{last_active}** ({active_color}, {active_days} days ago)
-                - Email Verified: {"✅ Yes" if signals.get("verified_email") else "❌ No"}
-                - Phone Verified: {"✅ Yes" if signals.get("verified_phone") else "❌ No"}
-                - GitHub Score: **{signals.get("github_activity_score")}/100**
-            """)
+        if compare_mode:
+            compare_selected = st.multiselect(
+                "Select up to 3 candidates to compare:",
+                options=range(len(c_names)),
+                default=[selected_index],
+                format_func=lambda x: c_names[x],
+                max_selections=3
+            )
+            if len(compare_selected) < 2:
+                st.info("Please select at least 2 candidates from the list to compare side-by-side.")
+            else:
+                st.write("---")
+                cols = st.columns(len(compare_selected))
+                comparison_data = []
+                for idx, col_idx in enumerate(compare_selected):
+                    comp_cand = filtered_ranked[col_idx]
+                    comp_raw = comp_cand["candidate_raw"]
+                    comp_profile = comp_raw.get("profile", {})
+                    comp_signals = comp_raw.get("redrob_signals", {})
+                    
+                    t_score = ranker.calculate_title_score(comp_raw)
+                    s_score = ranker.calculate_skill_score(comp_raw)
+                    availability_mult = ranker.calculate_availability_multiplier(comp_raw)
+                    
+                    comparison_data.append({
+                        "Candidate": comp_cand["name"],
+                        "Title Fit (40%)": t_score * 0.4,
+                        "Skills Fit (30%)": s_score * 0.3,
+                        "Availability Index": availability_mult * 0.5,
+                        "Overall Score": comp_cand["score"]
+                    })
+                    
+                    with cols[idx]:
+                        st.markdown(f"### Rank {comp_cand['rank']}: {comp_cand['name']}")
+                        st.write(f"**ID**: `{comp_cand['candidate_id']}`")
+                        st.write(f"**Current Title**: {comp_cand['current_title']}")
+                        st.write(f"**Current Company**: {comp_cand['current_company']}")
+                        st.write(f"💼 **Experience**: {comp_cand['years_exp']:.1f} Years")
+                        st.write(f"📍 **Location**: {comp_cand['location']}")
+                        
+                        st.markdown(f"""
+                            <div style="text-align: center; margin: 1rem 0; padding: 0.75rem; border-radius: 12px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.25);">
+                                <div style="font-size: 0.75rem; color:#9CA3AF; letter-spacing:0.05em; font-weight:600;">FIT SCORE</div>
+                                <div style="font-size: 1.8rem; font-weight: 800; color: #00E5FF; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);">{comp_cand['score']:.3f}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        skills_list = [s.get("name") for s in comp_raw.get("skills", [])][:5]
+                        skills_str = ", ".join(skills_list) if skills_list else "None listed"
+                        st.write(f"⚡ **Top Skills**: {skills_str}")
+                        
+                        notice_days = comp_signals.get("notice_period_days", 90)
+                        otw_status = "🟢 Available" if comp_signals.get("open_to_work_flag", False) else "⚪ Passive"
+                        st.write(f"📅 **Notice**: {notice_days} days ({otw_status})")
+                        st.write(f"💬 **Response Rate**: {comp_signals.get('recruiter_response_rate', 0.0)*100:.0f}%")
+                        
+                        st.write("---")
+                        st.markdown("**AI Fit Analysis:**")
+                        st.markdown(f"<div class='reasoning-box'>{comp_cand['reasoning']}</div>", unsafe_allow_html=True)
+                        
+                st.write("")
+                st.markdown("### 📊 Fit Component Comparison")
+                df_comp = pd.DataFrame(comparison_data)
+                fig_comp = px.bar(
+                    df_comp,
+                    x="Candidate",
+                    y=["Title Fit (40%)", "Skills Fit (30%)", "Availability Index", "Overall Score"],
+                    barmode="group",
+                    color_discrete_sequence=["#1E3A8A", "#38BDF8", "#00E5FF", "#FBBF24"]
+                )
+                fig_comp.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font_color="#F3F4F6",
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    height=300,
+                    xaxis=dict(showgrid=False, title=""),
+                    yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", title="Component Scores"),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
+        else:
+            cand_data = filtered_ranked[selected_index]
+            cand_raw = cand_data["candidate_raw"]
+            profile = cand_raw.get("profile", {})
+            signals = cand_raw.get("redrob_signals", {})
             
             st.write("---")
             
-            st.markdown("### Skill Set & Experience Duration")
-            skills_data = []
-            for s in cand_raw.get("skills", []):
-                skills_data.append({
-                    "Skill": s.get("name"),
-                    "Proficiency": s.get("proficiency").capitalize(),
-                    "Months": s.get("duration_months"),
-                    "Endorsements": s.get("endorsements")
-                })
+            c1, c2 = st.columns([1.8, 1.2])
             
-            if skills_data:
-                df_skills = pd.DataFrame(skills_data)
-                # Sort by months
-                df_skills = df_skills.sort_values(by="Months", ascending=False)
-                st.dataframe(df_skills, use_container_width=True, hide_index=True)
-            else:
-                st.write("No skills listed.")
+            with c1:
+                st.markdown(f"## {profile.get('anonymized_name')}")
+                st.markdown(f"**Headline**: {profile.get('headline')}")
+                st.write(f"📍 **Location**: {profile.get('location')}, {profile.get('country')} | 💼 **Experience**: {profile.get('years_of_experience')} Years")
+                
+                # Recruiter reasoning
+                st.markdown("#### AI Recruiter Fit Analysis")
+                st.markdown(f"<div class='reasoning-box'>{cand_data['reasoning']}</div>", unsafe_allow_html=True)
+                
+                # Career History Timeline
+                st.markdown("#### Professional Timeline")
+                for job in cand_raw.get("career_history", []):
+                    start = job.get("start_date", "N/A")
+                    end = job.get("end_date") or "Present"
+                    dur = job.get("duration_months", 0)
+                    
+                    st.markdown(f"""
+                        <div class='timeline-card'>
+                            <div class='timeline-dot'></div>
+                            <div class='timeline-company'>{job.get('company')} <span style='font-size:0.8rem; color:#9CA3AF;'>({job.get('company_size')} employees)</span></div>
+                            <div class='timeline-title'>{job.get('title')}</div>
+                            <div class='timeline-dates'>{start} to {end} ({dur} months) | Industry: {job.get('industry')}</div>
+                            <p style='margin-top:0.5rem; font-size:0.9rem; color:#D1D5DB;'>{job.get('description')}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                # Education Timeline
+                st.markdown("#### Education")
+                for edu in cand_raw.get("education", []):
+                    tier_badge = f"<span style='color:#3B82F6;'>[{edu.get('tier', 'unknown').upper()}]</span>"
+                    st.markdown(f"""
+                        <div class='timeline-card' style='border-left-color: #3B82F6;'>
+                            <div class='timeline-dot' style='background-color: #3B82F6;'></div>
+                            <div class='timeline-company'>{edu.get('institution')} {tier_badge}</div>
+                            <div class='timeline-title'>{edu.get('degree')} in {edu.get('field_of_study')}</div>
+                            <div class='timeline-dates'>{edu.get('start_year')} - {edu.get('end_year')} | Grade: {edu.get('grade')}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+            with c2:
+                st.markdown("### Platform Availability Envelope")
+                
+                # Custom neon styled availability badges
+                otw = signals.get("open_to_work_flag", False)
+                if otw:
+                    otw_badge = '<span class="badge badge-green"><span class="pulse-active"></span>Active Open-To-Work</span>'
+                else:
+                    otw_badge = '<span class="badge badge-yellow">Passive Searcher</span>'
+                    
+                rrr = signals.get("recruiter_response_rate", 0.0)
+                if rrr >= 0.7:
+                    rrr_badge = f'<span class="badge badge-green">{rrr*100:.0f}% Response Rate</span>'
+                elif rrr >= 0.4:
+                    rrr_badge = f'<span class="badge badge-yellow">{rrr*100:.0f}% Response Rate</span>'
+                else:
+                    rrr_badge = f'<span class="badge badge-red">{rrr*100:.0f}% Response Rate</span>'
+                    
+                notice = signals.get("notice_period_days", 90)
+                if notice <= 30:
+                    notice_badge = f'<span class="badge badge-green">{notice}d Notice Period</span>'
+                elif notice <= 60:
+                    notice_badge = f'<span class="badge badge-yellow">{notice}d Notice Period</span>'
+                else:
+                    notice_badge = f'<span class="badge badge-red">{notice}d Notice Period</span>'
+                    
+                last_active = signals.get("last_active_date", "")
+                active_days = 999
+                if last_active:
+                    active_date = ranker.parse_date(last_active)
+                    if active_date:
+                        active_days = (ranker.CURRENT_REF_DATE - active_date).days
+                
+                if active_days <= 30:
+                    active_badge = f'<span class="badge badge-green">Active {active_days}d ago</span>'
+                elif active_days <= 90:
+                    active_badge = f'<span class="badge badge-yellow">Active {active_days}d ago</span>'
+                else:
+                    active_badge = f'<span class="badge badge-red">Inactive {active_days}d ago</span>'
+                    
+                email_badge = '<span class="badge badge-blue">📧 Email Verified</span>' if signals.get("verified_email") else '<span class="badge badge-red">📧 Email Unverified</span>'
+                phone_badge = '<span class="badge badge-blue">📱 Phone Verified</span>' if signals.get("verified_phone") else '<span class="badge badge-red">📱 Phone Unverified</span>'
+                github_badge = f'<span class="badge badge-blue">💻 GitHub Score: {signals.get("github_activity_score", 0)}/100</span>'
+                
+                st.markdown(f"""
+                    <div style="margin-bottom: 1.5rem;">
+                        <p style="font-weight: 600; color: #9CA3AF; margin-bottom: 0.5rem;">Candidate Signals:</p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            {otw_badge}
+                            {notice_badge}
+                            {rrr_badge}
+                            {active_badge}
+                            {email_badge}
+                            {phone_badge}
+                            {github_badge}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                st.write("---")
+                
+                st.markdown("### Skill Set & Experience Duration")
+                skills_data = []
+                for s in cand_raw.get("skills", []):
+                    skills_data.append({
+                        "Skill": s.get("name"),
+                        "Proficiency": s.get("proficiency").capitalize(),
+                        "Months": s.get("duration_months", 0),
+                        "Endorsements": s.get("endorsements", 0)
+                    })
+                
+                if skills_data:
+                    df_skills = pd.DataFrame(skills_data)
+                    df_skills = df_skills.sort_values(by="Months", ascending=True)
+                    
+                    color_map = {
+                        "Expert": "#00E5FF",
+                        "Advanced": "#38BDF8",
+                        "Intermediate": "#1E3A8A",
+                        "Beginner": "#1E293B"
+                    }
+                    
+                    fig_skills = px.bar(
+                        df_skills,
+                        x="Months",
+                        y="Skill",
+                        orientation="h",
+                        color="Proficiency",
+                        color_discrete_map=color_map,
+                        hover_data=["Proficiency", "Endorsements"],
+                        text="Months"
+                    )
+                    fig_skills.update_layout(
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        font_color="#F3F4F6",
+                        margin=dict(l=10, r=10, t=10, b=10),
+                        height=max(200, len(skills_data) * 32),
+                        xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", title="Experience (Months)"),
+                        yaxis=dict(showgrid=False, title="", tickfont=dict(size=11)),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                    )
+                    fig_skills.update_traces(
+                        textposition="inside",
+                        marker_line_color="rgba(0,0,0,0)",
+                        hovertemplate="<b>%{y}</b><br>Experience: %{x} months<br>Proficiency: %{customdata[0]}<br>Endorsements: %{customdata[1]}<extra></extra>"
+                    )
+                    st.plotly_chart(fig_skills, use_container_width=True, config={'displayModeBar': False})
+                else:
+                    st.write("No skills listed.")
 
 # Tab 3: Resume Matcher
 with tab_matcher:
     st.markdown("### Candidate Resume Matching Sandpit")
-    st.write("Upload a plain-text resume description to calculate raw matching score and highlight missing requirements.")
+    st.write("Upload a PDF/TXT resume description to calculate raw matching score and highlight missing requirements.")
     
-    resume_text = st.text_area("Paste Resume Text Here:", placeholder="Paste candidates CV content, skills, and experiences here...", height=200)
+    # PDF/TXT Resume uploader
+    uploaded_resume = st.file_uploader("Upload Candidate Resume (PDF or TXT):", type=["pdf", "txt"])
+    
+    resume_text = ""
+    if uploaded_resume:
+        if uploaded_resume.name.endswith(".pdf"):
+            try:
+                from pypdf import PdfReader
+                reader = PdfReader(uploaded_resume)
+                text_parts = []
+                for page in reader.pages:
+                    extracted = page.extract_text()
+                    if extracted:
+                        text_parts.append(extracted)
+                resume_text = "\n".join(text_parts)
+                st.success("Successfully extracted text from uploaded PDF resume!")
+            except Exception as e:
+                st.error(f"Error parsing PDF file: {e}. Please try another file or copy-paste the text.")
+        else:
+            try:
+                resume_text = uploaded_resume.getvalue().decode("utf-8")
+                st.success("Successfully loaded TXT resume!")
+            except Exception as e:
+                st.error(f"Error reading TXT file: {e}")
+                
+    resume_text = st.text_area(
+        "Or Paste/Edit Resume Text Here:",
+        value=resume_text,
+        placeholder="Paste candidates CV content, skills, and experiences here...",
+        height=200
+    )
     
     if st.button("Analyze Resume Match"):
         if not resume_text:
-            st.warning("Please paste some text first.")
+            st.warning("Please upload a file or paste some text first.")
         else:
             resume_lower = resume_text.lower()
             
@@ -551,22 +892,199 @@ with tab_matcher:
             if matched_eval: score += 0.2
             if "python" in resume_lower: score += 0.1
             
-            st.markdown(f"## Match Fit Score: `{score*100:.0f}%`")
+            # Render layout columns
+            g1, g2 = st.columns([1.2, 1.8])
             
-            c1, c2 = st.columns(2)
-            with c1:
-                st.success("### Found Skills")
-                st.write(f"**Vector DBs**: {', '.join(matched_vdb) if matched_vdb else 'None'}")
-                st.write(f"**Retrieval**: {', '.join(matched_ret) if matched_ret else 'None'}")
-                st.write(f"**Evaluation**: {', '.join(matched_eval) if matched_eval else 'None'}")
-                st.write(f"**Python**: {'Yes' if 'python' in resume_lower else 'No'}")
-            with c2:
-                st.error("### Gaps / Missing Focus")
-                missing_vdb = vectordb_skills - set(matched_vdb)
-                missing_eval = eval_skills - set(matched_eval)
+            with g1:
+                # Speedometer Gauge Chart using go.Indicator
+                import plotly.graph_objects as go
+                fig_gauge = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=score * 100,
+                    domain={'x': [0, 1], 'y': [0, 1]},
+                    title={'text': "Match Suitability %", 'font': {'size': 15, 'color': '#9CA3AF'}},
+                    gauge={
+                        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#F3F4F6"},
+                        'bar': {'color': "#00E5FF"},
+                        'bgcolor': "rgba(30, 41, 59, 0.5)",
+                        'borderwidth': 1,
+                        'bordercolor': "rgba(56, 189, 248, 0.3)",
+                        'steps': [
+                            {'range': [0, 40], 'color': 'rgba(239, 68, 68, 0.1)'},
+                            {'range': [40, 75], 'color': 'rgba(245, 158, 11, 0.1)'},
+                            {'range': [75, 100], 'color': 'rgba(16, 185, 129, 0.1)'}
+                        ],
+                        'threshold': {
+                            'line': {'color': "#38BDF8", 'width': 3},
+                            'thickness': 0.75,
+                            'value': 75
+                        }
+                    }
+                ))
+                fig_gauge.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    font_color="#F3F4F6",
+                    height=200,
+                    margin=dict(l=10, r=10, t=30, b=10)
+                )
+                st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
                 
-                st.write(f"**Missing Vector DBs**: {', '.join(list(missing_vdb)[:3])}")
-                st.write(f"**Missing Eval Metrics**: {', '.join(list(missing_eval)[:3])}")
-                
+            with g2:
+                # Skill breakdown
+                sc1, sc2 = st.columns(2)
+                with sc1:
+                    st.success("#### Found Skills")
+                    st.write(f"**Vector DBs**: {', '.join(matched_vdb) if matched_vdb else 'None'}")
+                    st.write(f"**Retrieval**: {', '.join(matched_ret) if matched_ret else 'None'}")
+                    st.write(f"**Evaluation**: {', '.join(matched_eval) if matched_eval else 'None'}")
+                    st.write(f"**Python**: {'Yes' if 'python' in resume_lower else 'No'}")
+                with sc2:
+                    st.error("#### Gaps / Missing Focus")
+                    missing_vdb = vectordb_skills - set(matched_vdb)
+                    missing_eval = eval_skills - set(matched_eval)
+                    
+                    st.write(f"**Missing Vector DBs**: {', '.join(list(missing_vdb)[:3]) if missing_vdb else 'None'}")
+                    st.write(f"**Missing Eval Metrics**: {', '.join(list(missing_eval)[:3]) if missing_eval else 'None'}")
+            
             st.write("---")
             st.info("Note: This sandpit calculates a zero-shot keyword match similarity score. Real candidate profiles from the pool also incorporate platform activity history (notice periods, response rate, etc.) which optimizes the final ranking.")
+
+# Tab 4: Defused Traps Audit
+with tab_traps:
+    st.markdown("### 🛡️ Programmatic Trap Filtering Audit Log")
+    st.write("Our AI Engine runs multiple physical and logical consistency audits to catch honeypot trap accounts and IT services consulting profiles.")
+    
+    # Check for honeypot count stats
+    # Let's count trap types
+    trap_counts = {
+        "Date Conflict (Signup > Active)": 0,
+        "Skill Duration Mismatch (Skill > Exp)": 0,
+        "Proficiency Contradiction (Expert with 0 mo)": 0,
+        "Timeline Contradiction (Job pre-founding)": 0,
+        "Job Duration Mismatch (Job > Comp age)": 0,
+        "IT Consulting Entire Career": 0
+    }
+    
+    caught_details = []
+    
+    # Let's scan candidates to classify traps
+    for cand in candidates_list:
+        # check consulting
+        is_c = ranker.is_consulting_only(cand)
+        hp, hp_reason = ranker.is_honeypot(cand)
+        
+        if hp:
+            # Identify sub-reason
+            signals = cand.get("redrob_signals", {})
+            signup = ranker.parse_date(signals.get("signup_date"))
+            active = ranker.parse_date(signals.get("last_active_date"))
+            profile = cand.get("profile", {})
+            years_exp = profile.get("years_of_experience", 0)
+            
+            if signup and active and signup > active:
+                trap_counts["Date Conflict (Signup > Active)"] += 1
+            
+            skills_mismatch = False
+            expert_zero = False
+            for s in cand.get("skills", []):
+                dur_years = s.get("duration_months", 0) / 12.0
+                if dur_years > years_exp + 0.5:
+                    skills_mismatch = True
+                if s.get("proficiency") in ["expert", "advanced"] and s.get("duration_months", 0) == 0:
+                    expert_zero = True
+                    
+            if skills_mismatch:
+                trap_counts["Skill Duration Mismatch (Skill > Exp)"] += 1
+            if expert_zero:
+                trap_counts["Proficiency Contradiction (Expert with 0 mo)"] += 1
+                
+            timeline_pre = False
+            timeline_dur = False
+            career = cand.get("career_history", [])
+            for job in career:
+                comp = job.get("company", "")
+                if comp in ranker.FOUNDING_YEARS:
+                    f_year = ranker.FOUNDING_YEARS[comp]
+                    start_str = job.get("start_date")
+                    if start_str:
+                        try:
+                            start_year = int(start_str.split("-")[0])
+                            if start_year < f_year:
+                                timeline_pre = True
+                        except:
+                            pass
+                    dur_years = job.get("duration_months", 0) / 12.0
+                    max_dur = ranker.CURRENT_REF_DATE.year - f_year
+                    if dur_years > max_dur:
+                        timeline_dur = True
+                        
+            if timeline_pre:
+                trap_counts["Timeline Contradiction (Job pre-founding)"] += 1
+            if timeline_dur:
+                trap_counts["Job Duration Mismatch (Job > Comp age)"] += 1
+                
+            if not (signup and active and signup > active) and not skills_mismatch and not expert_zero and not timeline_pre and not timeline_dur:
+                trap_counts["Timeline Contradiction (Job pre-founding)"] += 1
+                
+            if len(caught_details) < 50:
+                caught_details.append({
+                    "ID": cand["candidate_id"],
+                    "Name": profile.get("anonymized_name", "Anonymous"),
+                    "Type": "Honeypot Account",
+                    "Reason": hp_reason
+                })
+        elif is_c:
+            trap_counts["IT Consulting Entire Career"] += 1
+            if len(caught_details) < 50:
+                caught_details.append({
+                    "ID": cand["candidate_id"],
+                    "Name": cand.get("profile", {}).get("anonymized_name", "Anonymous"),
+                    "Type": "Consulting Filter",
+                    "Reason": "Entire career spent at IT consulting/services firms (disallowed by JD)."
+                })
+                
+    # Display breakdown pie chart
+    t_cols = st.columns([1.2, 1.8])
+    with t_cols[0]:
+        st.markdown("#### Trap Category Distribution")
+        non_zero_traps = {k: v for k, v in trap_counts.items() if v > 0}
+        if non_zero_traps:
+            df_traps = pd.DataFrame(list(non_zero_traps.items()), columns=["Category", "Blocked Profiles"])
+            fig_traps = px.pie(
+                df_traps,
+                names="Category",
+                values="Blocked Profiles",
+                hole=0.4,
+                color_discrete_sequence=["#EF4444", "#F59E0B", "#38BDF8", "#00E5FF", "#1E3A8A", "#4B5563"]
+            )
+            fig_traps.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#F3F4F6",
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=250,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
+            )
+            st.plotly_chart(fig_traps, use_container_width=True, config={'displayModeBar': False})
+        else:
+            st.write("No threats recorded.")
+            
+    with t_cols[1]:
+        st.markdown("#### Real-time Threats Defused Audit Log")
+        st.write("Flagged profiles caught by the Redrob Recruiter system:")
+        df_caught = pd.DataFrame(caught_details)
+        if not df_caught.empty:
+            st.dataframe(
+                df_caught,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "ID": st.column_config.TextColumn(width=100),
+                    "Name": st.column_config.TextColumn(width=120),
+                    "Type": st.column_config.TextColumn(width=120),
+                    "Reason": st.column_config.TextColumn(width=300),
+                }
+            )
+        else:
+            st.write("No defused traps in sample.")
