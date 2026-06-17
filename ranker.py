@@ -295,6 +295,22 @@ def generate_reasoning(cand, rank):
     title = profile.get("current_title", "Engineer")
     signals = cand.get("redrob_signals", {})
     
+    # Check for Tier-1 education
+    edu_tier = ""
+    for edu in cand.get("education", []):
+        if edu.get("tier", "").lower() == "tier_1":
+            edu_tier = "Tier-1 graduate"
+            break
+        elif edu.get("tier", "").lower() == "tier_2":
+            edu_tier = "Tier-2 graduate"
+            break
+            
+    # Check for GitHub activity
+    github_act = signals.get("github_activity_score", -1)
+    github_str = ""
+    if github_act > 25:
+        github_str = f"strong open-source contributions (GitHub score: {github_act:.1f})"
+        
     # Find matching skills to list
     vdb_skills = {"pinecone", "weaviate", "qdrant", "milvus", "elasticsearch", "faiss"}
     matching_skills = [s["name"] for s in cand.get("skills", []) if s["name"].lower() in vdb_skills]
@@ -302,9 +318,17 @@ def generate_reasoning(cand, rank):
     skills_str = f"with depth in {', '.join(matching_skills[:2])}" if matching_skills else "with strong backend skills"
     notice_str = f"{signals.get('notice_period_days')}d notice"
     
+    # Build education/github highlight
+    highlights = []
+    if edu_tier:
+        highlights.append(edu_tier)
+    if github_str:
+        highlights.append(github_str)
+    highlights_str = f" ({', '.join(highlights)})" if highlights else ""
+    
     if rank <= 10:
         return (
-            f"Exceptional {title} with {exp:.1f} years of experience. Proved production impact at product companies; "
+            f"Exceptional {title} with {exp:.1f} years of experience{highlights_str}. Proved production impact at product companies; "
             f"expert {skills_str} matching the 'shipper' profile. Strong engagement signals ({notice_str}, {int(signals.get('recruiter_response_rate', 0)*100)}% response rate)."
         )
     elif rank <= 50:
@@ -314,13 +338,15 @@ def generate_reasoning(cand, rank):
         elif not profile.get('location', '').lower() in ['pune', 'noida', 'delhi', 'gurgaon']:
             concern = " Relocation to Pune/Noida offices required, but candidate is willing to relocate."
             
+        highlight_prefix = f" {edu_tier} with" if edu_tier else ""
         return (
-            f"Strong candidate with {exp:.1f} years experience as {title}. Shipped search/retrieval components {skills_str}. "
+            f"Strong{highlight_prefix} candidate with {exp:.1f} years experience as {title}. Shipped search/retrieval components {skills_str}. "
             f"Highly active on platform.{concern}"
         )
     else:
+        highlight_prefix = f" ({edu_tier})" if edu_tier else ""
         return (
-            f"Solid backend/data profile with adjacent ML exposure ({exp:.1f} yrs experience). "
+            f"Solid backend/data profile with adjacent ML exposure ({exp:.1f} yrs experience){highlight_prefix}. "
             f"Good foundational skills, though less direct vector search production experience; serves as a high-quality filler."
         )
 
@@ -371,16 +397,46 @@ def score_candidate(cand, semantic_similarity=None):
     else:
         nlp_s = calculate_history_score(cand)
         
+    # --- Integration of newly analyzed dataset signals ---
+    signals = cand.get("redrob_signals", {})
+    
+    # A. Education Tier Signal
+    edu_score = 0.0
+    for edu in cand.get("education", []):
+        tier = edu.get("tier", "").lower()
+        if tier == "tier_1":
+            edu_score = max(edu_score, 0.10)
+        elif tier == "tier_2":
+            edu_score = max(edu_score, 0.05)
+            
+    # B. GitHub Activity Signal
+    github_score = 0.0
+    github_act = signals.get("github_activity_score", -1)
+    if github_act > 0:
+        github_score = min(github_act / 200.0, 0.08) # Up to 0.08 bonus for active open-source contributors
+        
+    # C. Verified Skill Assessment Signal
+    assess_score = 0.0
+    assessments = signals.get("skill_assessment_scores", {})
+    core_ai_tests = {"NLP", "Python", "Fine-tuning LLMs", "Machine Learning", "Deep Learning"}
+    test_bonus_count = 0
+    for test_name, test_val in assessments.items():
+        if test_name in core_ai_tests and test_val >= 50.0:
+            test_bonus_count += 1
+    assess_score = min(test_bonus_count * 0.05, 0.10) # max 0.10 bonus (two passed assessments)
+    
+    # Calculate base score with signal bonuses
+    base_score = title_s * 0.4 + skill_s * 0.3 + nlp_s * 0.3
+    base_score += edu_score + github_score + assess_score
+    
     # 3. Availability Multiplier & Interest
     availability_mult = calculate_availability_multiplier(cand)
     
-    signals = cand.get("redrob_signals", {})
     views = signals.get("profile_views_received_30d", 0)
     searches = signals.get("search_appearance_30d", 0)
     saved = signals.get("saved_by_recruiters_30d", 0)
     interest_score = min((views * 2 + searches * 0.1 + saved * 5) / 100.0, 0.3)
     
-    base_score = title_s * 0.4 + skill_s * 0.3 + nlp_s * 0.3
     final_score = base_score * availability_mult + interest_score
     
     return {
