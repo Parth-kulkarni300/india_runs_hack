@@ -18,3 +18,8 @@ Thumbs.db
 venv/
 .venv/
 env/
+
+# Generated models and embeddings (Large files)
+*.npy
+candidate_ids.json
+

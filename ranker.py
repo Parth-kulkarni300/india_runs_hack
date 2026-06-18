@@ -56,7 +56,7 @@ def get_sentence_model():
     if SENTENCE_MODEL is None:
         try:
             from sentence_transformers import SentenceTransformer
-            SENTENCE_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+            SENTENCE_MODEL = SentenceTransformer('BAAI/bge-small-en-v1.5')
         except Exception as e:
             print(f"Warning: Failed to load SentenceTransformer: {e}")
     return SENTENCE_MODEL

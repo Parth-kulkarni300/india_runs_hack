@@ -19,9 +19,9 @@ def main():
         print(f"Error: Candidate database not found at {candidates_file}")
         return
         
-    print("Initializing SentenceTransformer model (all-MiniLM-L6-v2)...")
-    # Using a compact and fast model that runs easily on CPU
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    print("Initializing SentenceTransformer model (BAAI/bge-small-en-v1.5)...")
+    # Using a compact and fast state-of-the-art retrieval model
+    model = SentenceTransformer('BAAI/bge-small-en-v1.5')
     
     print("Loading candidate profiles from database...")
     candidates = []

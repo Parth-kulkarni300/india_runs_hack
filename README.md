@@ -32,7 +32,7 @@ graph TD
 
 ### 1. Offline Embedding Phase
 Running deep-learning transformer inference on 100,000 candidate profiles during the online ranking step is impossible under the 5-minute CPU constraint. 
-*   **Model**: We use the pre-trained `sentence-transformers/all-MiniLM-L6-v2` model.
+*   **Model**: We use the pre-trained `BAAI/bge-small-en-v1.5` model.
 *   **Compilation**: [embed_candidates.py](file:///D:/india_runs_hack/embed_candidates.py) compiles candidate titles, headlines, and summaries into 384-dimensional dense semantic vectors and saves them locally.
 
 ### 2. Trap-Defusing Layer (Honeypot Filter)
