@@ -1,11 +1,16 @@
 import streamlit as st
 import json
 import os
+import re
+import hashlib
 import pandas as pd
 import numpy as np
 import ranker
+import importlib
+importlib.reload(ranker)
 from pathlib import Path
 import plotly.express as px
+
 
 # Configure page layout and style
 st.set_page_config(
@@ -338,6 +343,227 @@ def load_candidates(file_path, limit=None):
                 
     return cands, total_raw, honeypots_caught, consulting_filtered
 
+def parse_custom_resume_pdf(uploaded_file):
+    """
+    Parse a custom candidate resume PDF into a candidates.jsonl style dictionary.
+    Uses realistic heuristics to extract name, skills, experience, and title.
+    Does NOT fabricate IIT education, python test scores, or AI titles.
+    """
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(uploaded_file)
+        text_parts = []
+        for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                text_parts.append(extracted)
+        text = "\n".join(text_parts)
+    except Exception as e:
+        st.error(f"Error parsing uploaded candidate PDF: {e}")
+        return None
+        
+    if not text.strip():
+        return None
+        
+    text_lower = text.lower()
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+        
+    # Heuristic 1: Extract Name from text stream or filename fallback
+    name = ""
+    job_titles_blacklist = ["engineer", "developer", "designer", "consultant", "manager", "advisor", "analyst", "intern", "architect", "scientist", "lead", "senior", "junior"]
+    if lines:
+        for line in lines:
+            clean_line = line.strip()
+            # Must be Title Case, 3-30 chars, only letters and spaces, not a header/job title
+            if (clean_line 
+                and len(clean_line) >= 3 
+                and len(clean_line) < 30 
+                and re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$", clean_line)
+                and not any(c in clean_line.lower() for c in ["@", "street", "road", "+", "phone", "email", "www", "resume", "curriculum", "page", "summary", "experience", "education", "skills", "projects", "contact", "profile", "objective", "work", "history", "languages", "interests", "present", "university", "college", "school"])
+                and not any(title_word in clean_line.lower() for title_word in job_titles_blacklist)):
+                name = clean_line
+                break
+                
+    if not name:
+        filename = uploaded_file.name
+        base_name = os.path.splitext(filename)[0]
+        name = base_name.replace("_", " ").replace("-", " ").title()
+        name = re.sub(r"\b(Resume|Cv|Bio|Vitae|Final|Update|Updated|Doc|Pdf)\b", "", name, flags=re.I).strip()
+        
+    if not name:
+        name = "Custom Candidate (PDF)"
+        
+    # Heuristic 2: Extract Years of Experience
+    years_exp = 5.0 # default baseline
+    exp_matches = re.findall(r"(\d+(?:\.\d+)?)\s*(?:\+)?\s*(?:years?|yrs?)\b", text, re.I)
+    if exp_matches:
+        try:
+            valid_exps = [float(e) for e in exp_matches if 1.0 <= float(e) <= 25.0]
+            if valid_exps:
+                years_exp = max(valid_exps)
+        except:
+            pass
+            
+    # Heuristic 3: Extract Current Title
+    title = "Candidate" # neutral default
+    titles_pool = [
+        "Senior AI Engineer", "AI Engineer", "Machine Learning Engineer", "ML Engineer",
+        "Data Scientist", "Lead Data Scientist", "Senior ML Engineer", "NLP Engineer",
+        "Applied Scientist", "Backend Engineer", "Software Engineer", "Frontend Engineer",
+        "Full Stack Engineer", "Systems Engineer", "Project Manager", "Financial Advisor",
+        "Senior Financial Advisor", "Consultant", "Director", "Manager"
+    ]
+    found_title = False
+    for t in titles_pool:
+        if re.search(r"\b" + re.escape(t) + r"\b", text, re.I):
+            title = t
+            found_title = True
+            break
+            
+    if not found_title and len(lines) > 1:
+        # Check first 5 lines for a title string
+        for line in lines[1:5]:
+            if len(line) > 5 and len(line) < 40 and not any(c in line for c in ["@", "street", "road", "+", "phone", "email", "www"]):
+                title = line.strip()
+                break
+            
+    # Heuristic 4: Extract Education Tier
+    edu_tier = "unknown"
+    edu_institution = "Other Institution"
+    if any(k in text_lower for k in ["iit", "bits pilani", "indian institute of technology", "iisc"]):
+        edu_tier = "tier_1"
+        edu_institution = "IIT / BITS (Tier-1)"
+    elif any(k in text_lower for k in ["nit", "iiit", "dtu", "vit"]):
+        edu_tier = "tier_2"
+        edu_institution = "NIT / IIIT (Tier-2)"
+    else:
+        # Look for university keywords in text
+        uni_match = re.search(r"([A-Za-z\s]+(?:University|College|Institute))", text)
+        if uni_match:
+            edu_institution = uni_match.group(1).strip()
+            
+    # Heuristic 5: Extract Skills (Only if present)
+    skills_catalog = {
+        "Python": "expert",
+        "Pinecone": "expert",
+        "Weaviate": "expert",
+        "Qdrant": "expert",
+        "Milvus": "expert",
+        "Elasticsearch": "advanced",
+        "Faiss": "advanced",
+        "Sentence-Transformers": "expert",
+        "Embeddings": "expert",
+        "NLP": "expert",
+        "NDCG": "advanced",
+        "MRR": "advanced",
+        "MAP": "advanced",
+        "LoRA": "advanced",
+        "QLoRA": "advanced",
+        "PEFT": "advanced",
+        "LLM": "expert",
+        "XGBoost": "advanced"
+    }
+    detected_skills = []
+    for sname, prof in skills_catalog.items():
+        if re.search(r"\b" + re.escape(sname) + r"\b", text, re.I):
+            detected_skills.append({
+                "name": sname,
+                "proficiency": prof,
+                "duration_months": int(years_exp * 6)
+            })
+            
+    # Heuristic 6: GitHub Presence
+    github_score = 0.0
+    if "github.com" in text_lower:
+        github_score = 60.0
+        
+    # Construct candidate dictionary
+    cand_id = "CUSTOM_" + hashlib.md5(uploaded_file.name.encode('utf-8')).hexdigest()[:8].upper()
+    
+    cand_dict = {
+        "candidate_id": cand_id,
+        "profile": {
+            "anonymized_name": name,
+            "current_title": title,
+            "headline": f"{title} (Custom Upload)",
+            "summary": text[:500].replace("\n", " ") + "...",
+            "years_of_experience": years_exp,
+            "location": "Noida, India" if "india" in text_lower or "noida" in text_lower or "pune" in text_lower or "delhi" in text_lower else "Remote, India",
+            "country": "India",
+            "current_company": lines[2][:30] if len(lines) > 2 else "Independent Consultant"
+        },
+        "skills": detected_skills,
+        "education": [
+            {
+                "institution": edu_institution,
+                "degree": "Degree",
+                "field_of_study": "Engineering" if "engineering" in text_lower or "science" in text_lower else "Business / General",
+                "start_year": 2018,
+                "end_year": 2022,
+                "grade": "N/A",
+                "tier": edu_tier
+            }
+        ],
+        "career_history": [
+            {
+                "company": "Previous Company",
+                "title": title,
+                "start_date": "2022-06-01",
+                "end_date": None,
+                "duration_months": int(years_exp * 12),
+                "industry": "Software / AI" if "software" in text_lower or "artificial" in text_lower else "Other Industry",
+                "company_size": "51-200",
+                "description": text
+            }
+        ],
+        "redrob_signals": {
+            "signup_date": "2026-04-01",
+            "last_active_date": "2026-04-20", # ~52d inactive relative to CURRENT_REF_DATE (neutral: 1.0)
+            "open_to_work_flag": False, # neutral: 1.0
+            "recruiter_response_rate": 0.4, # neutral: 1.0
+            "notice_period_days": 90, # standard: 0.8
+            "willing_to_relocate": True,
+            "github_activity_score": github_score,
+            "skill_assessment_scores": {}, # No fake tests
+            "profile_views_received_30d": 5,
+            "search_appearance_30d": 15,
+            "saved_by_recruiters_30d": 0
+        }
+    }
+    
+    return cand_dict
+
+def register_custom_candidate_embedding(cand_dict, resume_text):
+    """
+    Ensure the custom candidate is added to the ranker's global embedding variables.
+    """
+    if not ranker.EMBEDDINGS_LOADED or ranker.CANDIDATE_EMBEDDINGS is None:
+        return
+        
+    cid = cand_dict["candidate_id"]
+    if cid in ranker.CANDIDATE_ID_TO_INDEX:
+        return
+        
+    model = ranker.get_sentence_model()
+    if model is not None:
+        try:
+            profile = cand_dict.get("profile", {})
+            title = profile.get("current_title", "")
+            headline = profile.get("headline", "")
+            summary = profile.get("summary", "")
+            combined_text = f"Title: {title}. Headline: {headline}. Summary: {summary}"
+            
+            # Generate embedding
+            emb = model.encode(combined_text, normalize_embeddings=True)
+            
+            # Append vector
+            ranker.CANDIDATE_EMBEDDINGS = np.vstack([ranker.CANDIDATE_EMBEDDINGS, emb])
+            # Add to index mapping
+            new_idx = len(ranker.CANDIDATE_ID_TO_INDEX)
+            ranker.CANDIDATE_ID_TO_INDEX[cid] = new_idx
+        except Exception as e:
+            st.error(f"Error generating embedding for custom candidate: {e}")
+
 # Main Layout
 st.markdown("<div class='main-title'>🧠 Redrob AI Recruiter Brain</div>", unsafe_allow_html=True)
 st.markdown("<div class='sub-title'>Intelligent Candidate Discovery, Trap Filtering, and Predictive Ranking Dashboard</div>", unsafe_allow_html=True)
@@ -347,26 +573,71 @@ st.sidebar.markdown("""
     <div style="text-align: center; margin-bottom: 1rem; padding-top: 1rem;">
         <img src="https://img.icons8.com/nolan/96/brain.png" style="width: 70px; filter: drop-shadow(0 0 12px rgba(0, 229, 255, 0.45));" />
         <h2 style="font-family: 'Outfit', sans-serif; font-weight: 800; background: linear-gradient(90deg, #38BDF8, #00E5FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: 0.5rem; margin-bottom: 0.2rem; font-size: 1.35rem; letter-spacing: -0.02em;">RECRUIT COCKPIT</h2>
-        <p style="color: #9CA3AF; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 1.5rem;">Engine Control Center</p>
+        <p style="color: #9CA3AF; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 1.5rem;">Engine Status Center</p>
     </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.markdown("""
-    <div style="border-left: 3px solid #00E5FF; padding-left: 10px; margin: 1.2rem 0 0.8rem 0;">
-        <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #F3F4F6; margin: 0; font-size: 1rem; letter-spacing: 0.03em; text-transform: uppercase;">🔧 Configuration & Data</h4>
-    </div>
-""", unsafe_allow_html=True)
+# Initialize custom candidates list in session state
+if "custom_candidates" not in st.session_state:
+    st.session_state.custom_candidates = []
+if "processed_custom_resumes" not in st.session_state:
+    st.session_state.processed_custom_resumes = {}
 
-# 1. Dataset File Path Input
-default_dataset_path = "../[PUB] India_runs_data_and_ai_challenge/India_runs_data_and_ai_challenge/candidates.jsonl"
-dataset_path = st.sidebar.text_input("Candidate Database Path (.jsonl)", value=default_dataset_path)
-
-# Let user upload a smaller sample file if they wish (Required by Sandbox Spec)
-uploaded_file = st.sidebar.file_uploader("Or Upload Custom Candidate Sample (.jsonl)", type=["jsonl"])
-
-# Limit candidates for UI performance toggle
-limit_toggle = st.sidebar.checkbox("Limit analysis to first 10,000 candidates for speed", value=True)
-load_limit = 10000 if limit_toggle else None
+# Top Config Control Center
+with st.expander("⚙️ DISCOVERY ENGINE CONTROL CENTER & FILTERS", expanded=True):
+    col_left, col_right = st.columns([1.3, 1.0])
+    
+    with col_left:
+        st.markdown("<div style='font-weight: 600; color: #E5E7EB; margin-bottom: 0.3rem;'>📝 Target Job Description</div>", unsafe_allow_html=True)
+        jd_text = st.text_area("Target Job Description", value=DEFAULT_JD, height=220, label_visibility="collapsed")
+        
+        st.markdown("<div style='font-weight: 600; color: #E5E7EB; margin-top: 0.8rem; margin-bottom: 0.3rem;'>📁 Candidate Database Path (.jsonl)</div>", unsafe_allow_html=True)
+        default_dataset_path = "../[PUB] India_runs_data_and_ai_challenge/India_runs_data_and_ai_challenge/candidates.jsonl"
+        dataset_path = st.text_input("Candidate Database Path", value=default_dataset_path, label_visibility="collapsed")
+        
+    with col_right:
+        st.markdown("<div style='font-weight: 600; color: #E5E7EB; margin-bottom: 0.3rem;'>🎯 Target Candidate Filters</div>", unsafe_allow_html=True)
+        
+        experience_range = st.slider("Required Experience (Years)", 0.0, 20.0, (5.0, 9.0), step=0.5)
+        max_notice_period = st.slider("Maximum Notice Period (Days)", 0, 180, 90, step=15)
+        
+        # Checkboxes and File Uploader
+        c_col1, c_col2 = st.columns(2)
+        with c_col1:
+            only_relocate = st.checkbox("Include Noida/Pune or willing to relocate", value=True)
+        with c_col2:
+            limit_toggle = st.checkbox("Limit to first 10,000 candidates (faster)", value=True)
+            
+        load_limit = 10000 if limit_toggle else None
+        
+        # Sibling File Uploaders
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            st.markdown("<div style='font-weight: 600; color: #E5E7EB; margin-top: 0.3rem; margin-bottom: 0.2rem;'>Database Sample (.jsonl)</div>", unsafe_allow_html=True)
+            uploaded_file = st.file_uploader("Upload Custom Sample", type=["jsonl"], label_visibility="collapsed")
+        with f_col2:
+            st.markdown("<div style='font-weight: 600; color: #E5E7EB; margin-top: 0.3rem; margin-bottom: 0.2rem;'>➕ Custom Resume (PDF)</div>", unsafe_allow_html=True)
+            uploaded_custom_resume = st.file_uploader("Upload Custom Candidate PDF", type=["pdf"], key="custom_resume_uploader", label_visibility="collapsed")
+            
+            if uploaded_custom_resume:
+                file_key = uploaded_custom_resume.name + str(uploaded_custom_resume.size)
+                if file_key not in st.session_state.processed_custom_resumes:
+                    with st.spinner(f"Embedding candidate..."):
+                        cand_dict = parse_custom_resume_pdf(uploaded_custom_resume)
+                        if cand_dict:
+                            # Register embedding
+                            register_custom_candidate_embedding(cand_dict, cand_dict["career_history"][0]["description"])
+                            # Store in session state
+                            st.session_state.custom_candidates.append(cand_dict)
+                            st.session_state.processed_custom_resumes[file_key] = cand_dict["candidate_id"]
+                            st.toast(f"Added custom candidate: {cand_dict['profile']['anonymized_name']}!", icon="🟢")
+                            
+        if st.session_state.custom_candidates:
+            st.write(f"📁 **Custom Resumes Active:** {len(st.session_state.custom_candidates)}")
+            if st.button("🗑️ Clear Custom Candidates", key="clear_custom_cands"):
+                st.session_state.custom_candidates = []
+                st.session_state.processed_custom_resumes = {}
+                st.rerun()
 
 # Handle loading data
 file_to_load = dataset_path
@@ -384,23 +655,35 @@ if not candidates_list:
     st.error(f"Could not load candidates from path '{file_to_load}'. Please check the path or upload a file.")
     st.stop()
 
-# 2. Interactive JD input
-jd_text = st.sidebar.text_area("Target Job Description", value=DEFAULT_JD, height=250)
+# Inject custom candidates into the active database pool
+if st.session_state.custom_candidates:
+    for custom_cand in st.session_state.custom_candidates:
+        if not any(c["candidate_id"] == custom_cand["candidate_id"] for c in candidates_list):
+            candidates_list.append(custom_cand)
+            # Ensure embedding remains registered on script reload
+            register_custom_candidate_embedding(custom_cand, custom_cand["career_history"][0]["description"])
 
-# 3. Interactive Filters
-st.sidebar.markdown("""
-    <div style="border-left: 3px solid #38BDF8; padding-left: 10px; margin: 1.5rem 0 0.8rem 0;">
-        <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #F3F4F6; margin: 0; font-size: 1rem; letter-spacing: 0.03em; text-transform: uppercase;">🎯 Candidate Filters</h4>
+# System Status sidebar card (appended after data loading succeeds)
+st.sidebar.markdown(f"""
+    <div style="border-left: 3px solid #00E5FF; padding-left: 10px; margin: 1.2rem 0 0.8rem 0;">
+        <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #F3F4F6; margin: 0; font-size: 1rem; letter-spacing: 0.03em; text-transform: uppercase;">⚡ System Status</h4>
+    </div>
+    <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #E5E7EB;"><b>AI Model:</b> <span style="color: #00E5FF; font-weight:600;">BGE-Small-v1.5</span> 🟢</p>
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #E5E7EB;"><b>Database:</b> <span style="color: #38BDF8; font-weight:600;">Connected</span> 🟢</p>
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #E5E7EB;"><b>Embeddings:</b> <span style="color: #34D399; font-weight:600;">{"Loaded" if ranker.EMBEDDINGS_LOADED else "Not Found"}</span> 🟢</p>
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #D1D5DB; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.3rem;"><b>Total Scanned:</b> {total_raw:,}</p>
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #F87171;"><b>Traps Blocked:</b> {total_hp:,}</p>
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #FBBF24;"><b>Consulting Filtered:</b> {total_consulting:,}</p>
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #38BDF8;"><b>Custom Uploads:</b> {len(st.session_state.custom_candidates)}</p>
     </div>
 """, unsafe_allow_html=True)
-experience_range = st.sidebar.slider("Years of Experience", 0.0, 20.0, (5.0, 9.0), step=0.5)
-max_notice_period = st.sidebar.slider("Max Notice Period (days)", 0, 180, 90, step=15)
-only_relocate = st.sidebar.checkbox("Include only Noida/Pune or willing to relocate", value=True)
+
 
 # Run Ranking Core
 with st.spinner("Analyzing profiles and computing scores..."):
     # Rank candidates using our shared library
-    ranked_candidates = ranker.rank_candidates(candidates_list)
+    ranked_candidates = ranker.rank_candidates(candidates_list, jd_text=jd_text)
 
 # Filter ranked results based on slider controls (dynamic UI overrides)
 filtered_ranked = []
@@ -442,11 +725,66 @@ tab_list, tab_dive, tab_matcher, tab_traps = st.tabs(["📋 Candidate Shortlist"
 # Tab 1: Shortlist
 with tab_list:
     st.markdown("### Top Candidate Matches")
-    st.write("Candidates are ranked by title relevance, skill envelopes, experience match, and availability signals.")
-    
     if not filtered_ranked:
         st.warning("No candidates matched your filters. Try widening your experience or notice period criteria.")
     else:
+        # Render custom candidates ranking status if any are uploaded
+        if "custom_candidates" in st.session_state and st.session_state.custom_candidates:
+            custom_ids = {cc["candidate_id"] for cc in st.session_state.custom_candidates}
+            
+            # Find their scores and ranks in filtered_ranked
+            custom_statuses = []
+            for c in filtered_ranked:
+                if c["candidate_id"] in custom_ids:
+                    in_top_100 = c["rank"] <= 100
+                    status_badge = "🟢 In Top 100 Shortlist" if in_top_100 else "⚪ Outside Shortlist"
+                    custom_statuses.append({
+                        "Name": c["name"],
+                        "ID": c["candidate_id"],
+                        "Rank": f"Rank {c['rank']}",
+                        "Score": f"{c['score']:.3f}",
+                        "Status": status_badge,
+                        "Title": c["current_title"]
+                    })
+            
+            # Find those that were filtered out by user sliders or hard filters
+            matched_ids = {cs["ID"] for cs in custom_statuses}
+            for cc in st.session_state.custom_candidates:
+                if cc["candidate_id"] not in matched_ids:
+                    reason = "🔴 Filtered Out (Check experience/relocation settings)"
+                    title_score = ranker.calculate_title_score(cc)
+                    if title_score == 0.0:
+                        reason = "🔴 Filtered Out (Non-tech / Disallowed Job Title)"
+                    elif not cc.get("skills", []):
+                        reason = "🔴 Filtered Out (No relevant AI/ML skills found)"
+                        
+                    custom_statuses.append({
+                        "Name": cc["profile"]["anonymized_name"],
+                        "ID": cc["candidate_id"],
+                        "Rank": "N/A",
+                        "Score": "N/A",
+                        "Status": reason,
+                        "Title": cc["profile"]["current_title"]
+                    })
+                    
+            st.markdown("""
+                <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem;">
+                    <h4 style="margin-top:0; color:#38BDF8; font-family:'Outfit', sans-serif; font-size:1.1rem; font-weight:700;">📁 Custom Uploaded Resumes Ranking</h4>
+                    <p style="font-size:0.85rem; color:#9CA3AF; margin-bottom:1rem;">Your custom PDF uploads are evaluated using the same rules and BGE model as the main database. Here is where they rank:</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.dataframe(
+                pd.DataFrame(custom_statuses)[["Name", "Title", "Rank", "Score", "Status"]],
+                use_container_width=True,
+                column_config={
+                    "Rank": st.column_config.TextColumn(width=100),
+                    "Score": st.column_config.TextColumn(width=100),
+                    "Status": st.column_config.TextColumn(width=300),
+                },
+                hide_index=True
+            )
+            st.write("")
         # Build dataframe for nice tabular display
         df_display = []
         for i, c in enumerate(filtered_ranked[:100]):
@@ -837,118 +1175,124 @@ with tab_dive:
 # Tab 3: Resume Matcher
 with tab_matcher:
     st.markdown("### Candidate Resume Matching Sandpit")
-    st.write("Upload a PDF/TXT resume description to calculate raw matching score and highlight missing requirements.")
+    st.write("Upload a PDF/TXT resume to calculate match suitability and identify key skill alignments or gaps against the active Job Description.")
     
     # PDF/TXT Resume uploader
     uploaded_resume = st.file_uploader("Upload Candidate Resume (PDF or TXT):", type=["pdf", "txt"])
     
-    resume_text = ""
+    # Store resume text in session state to avoid overwriting edits on script reruns
+    if "resume_text" not in st.session_state:
+        st.session_state.resume_text = ""
+        
     if uploaded_resume:
-        if uploaded_resume.name.endswith(".pdf"):
-            try:
-                from pypdf import PdfReader
-                reader = PdfReader(uploaded_resume)
-                text_parts = []
-                for page in reader.pages:
-                    extracted = page.extract_text()
-                    if extracted:
-                        text_parts.append(extracted)
-                resume_text = "\n".join(text_parts)
-                st.success("Successfully extracted text from uploaded PDF resume!")
-            except Exception as e:
-                st.error(f"Error parsing PDF file: {e}. Please try another file or copy-paste the text.")
-        else:
-            try:
-                resume_text = uploaded_resume.getvalue().decode("utf-8")
-                st.success("Successfully loaded TXT resume!")
-            except Exception as e:
-                st.error(f"Error reading TXT file: {e}")
-                
-    resume_text = st.text_area(
+        if "last_uploaded_name" not in st.session_state or st.session_state.last_uploaded_name != uploaded_resume.name:
+            st.session_state.last_uploaded_name = uploaded_resume.name
+            if uploaded_resume.name.endswith(".pdf"):
+                try:
+                    from pypdf import PdfReader
+                    reader = PdfReader(uploaded_resume)
+                    text_parts = []
+                    for page in reader.pages:
+                        extracted = page.extract_text()
+                        if extracted:
+                            text_parts.append(extracted)
+                    st.session_state.resume_text = "\n".join(text_parts)
+                    st.success("Successfully extracted text from uploaded PDF resume!")
+                except Exception as e:
+                    st.error(f"Error parsing PDF file: {e}. Please try another file or copy-paste the text.")
+            else:
+                try:
+                    st.session_state.resume_text = uploaded_resume.getvalue().decode("utf-8")
+                    st.success("Successfully loaded TXT resume!")
+                except Exception as e:
+                    st.error(f"Error reading TXT file: {e}")
+                    
+    resume_text_input = st.text_area(
         "Or Paste/Edit Resume Text Here:",
-        value=resume_text,
-        placeholder="Paste candidates CV content, skills, and experiences here...",
+        value=st.session_state.resume_text,
+        placeholder="Paste candidate's CV content, skills, and experiences here...",
         height=200
     )
+    # Sync edited text back to session state
+    st.session_state.resume_text = resume_text_input
     
-    if st.button("Analyze Resume Match"):
-        if not resume_text:
-            st.warning("Please upload a file or paste some text first.")
-        else:
-            resume_lower = resume_text.lower()
-            
-            # Extract skills and check relevance
-            vectordb_skills = {"pinecone", "weaviate", "qdrant", "milvus", "opensearch", "elasticsearch", "faiss"}
-            retrieval_skills = {"sentence-transformers", "embeddings", "bge", "e5", "nlp", "information retrieval", "retrieval"}
-            eval_skills = {"ndcg", "mrr", "map", "evaluation", "metrics"}
-            
-            matched_vdb = [s for s in vectordb_skills if s in resume_lower]
-            matched_ret = [s for s in retrieval_skills if s in resume_lower]
-            matched_eval = [s for s in eval_skills if s in resume_lower]
-            
-            score = 0.0
-            if matched_vdb: score += 0.35
-            if matched_ret: score += 0.35
-            if matched_eval: score += 0.2
-            if "python" in resume_lower: score += 0.1
-            
-            # Render layout columns
-            g1, g2 = st.columns([1.2, 1.8])
-            
-            with g1:
-                # Speedometer Gauge Chart using go.Indicator
-                import plotly.graph_objects as go
-                fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=score * 100,
-                    domain={'x': [0, 1], 'y': [0, 1]},
-                    title={'text': "Match Suitability %", 'font': {'size': 15, 'color': '#9CA3AF'}},
-                    gauge={
-                        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#F3F4F6"},
-                        'bar': {'color': "#00E5FF"},
-                        'bgcolor': "rgba(30, 41, 59, 0.5)",
-                        'borderwidth': 1,
-                        'bordercolor': "rgba(56, 189, 248, 0.3)",
-                        'steps': [
-                            {'range': [0, 40], 'color': 'rgba(239, 68, 68, 0.1)'},
-                            {'range': [40, 75], 'color': 'rgba(245, 158, 11, 0.1)'},
-                            {'range': [75, 100], 'color': 'rgba(16, 185, 129, 0.1)'}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#38BDF8", 'width': 3},
-                            'thickness': 0.75,
-                            'value': 75
-                        }
+    if st.session_state.resume_text.strip():
+        resume_lower = st.session_state.resume_text.lower()
+        
+        # Extract skills and check relevance
+        vectordb_skills = {"pinecone", "weaviate", "qdrant", "milvus", "opensearch", "elasticsearch", "faiss"}
+        retrieval_skills = {"sentence-transformers", "embeddings", "bge", "e5", "nlp", "information retrieval", "retrieval", "semantic search", "vector search"}
+        eval_skills = {"ndcg", "mrr", "map", "evaluation", "metrics"}
+        
+        matched_vdb = [s for s in vectordb_skills if s in resume_lower]
+        matched_ret = [s for s in retrieval_skills if s in resume_lower]
+        matched_eval = [s for s in eval_skills if s in resume_lower]
+        
+        score = 0.0
+        if matched_vdb: score += 0.35
+        if matched_ret: score += 0.35
+        if matched_eval: score += 0.2
+        if "python" in resume_lower: score += 0.1
+        
+        # Render layout columns
+        g1, g2 = st.columns([1.2, 1.8])
+        
+        with g1:
+            # Speedometer Gauge Chart using go.Indicator
+            import plotly.graph_objects as go
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=round(score * 100, 1),
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "Match Suitability %", 'font': {'size': 15, 'color': '#9CA3AF'}},
+                gauge={
+                    'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#F3F4F6"},
+                    'bar': {'color': "#00E5FF"},
+                    'bgcolor': "rgba(30, 41, 59, 0.5)",
+                    'borderwidth': 1,
+                    'bordercolor': "rgba(56, 189, 248, 0.3)",
+                    'steps': [
+                        {'range': [0, 40], 'color': 'rgba(239, 68, 68, 0.1)'},
+                        {'range': [40, 75], 'color': 'rgba(245, 158, 11, 0.1)'},
+                        {'range': [75, 100], 'color': 'rgba(16, 185, 129, 0.1)'}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#38BDF8", 'width': 3},
+                        'thickness': 0.75,
+                        'value': 75
                     }
-                ))
-                fig_gauge.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font_color="#F3F4F6",
-                    height=200,
-                    margin=dict(l=10, r=10, t=30, b=10)
-                )
-                st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
-                
-            with g2:
-                # Skill breakdown
-                sc1, sc2 = st.columns(2)
-                with sc1:
-                    st.success("#### Found Skills")
-                    st.write(f"**Vector DBs**: {', '.join(matched_vdb) if matched_vdb else 'None'}")
-                    st.write(f"**Retrieval**: {', '.join(matched_ret) if matched_ret else 'None'}")
-                    st.write(f"**Evaluation**: {', '.join(matched_eval) if matched_eval else 'None'}")
-                    st.write(f"**Python**: {'Yes' if 'python' in resume_lower else 'No'}")
-                with sc2:
-                    st.error("#### Gaps / Missing Focus")
-                    missing_vdb = vectordb_skills - set(matched_vdb)
-                    missing_eval = eval_skills - set(matched_eval)
-                    
-                    st.write(f"**Missing Vector DBs**: {', '.join(list(missing_vdb)[:3]) if missing_vdb else 'None'}")
-                    st.write(f"**Missing Eval Metrics**: {', '.join(list(missing_eval)[:3]) if missing_eval else 'None'}")
+                }
+            ))
+            fig_gauge.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font_color="#F3F4F6",
+                height=200,
+                margin=dict(l=10, r=10, t=30, b=10)
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
             
-            st.write("---")
-            st.info("Note: This sandpit calculates a zero-shot keyword match similarity score. Real candidate profiles from the pool also incorporate platform activity history (notice periods, response rate, etc.) which optimizes the final ranking.")
+        with g2:
+            # Skill breakdown
+            sc1, sc2 = st.columns(2)
+            with sc1:
+                st.success("#### Found Skills")
+                st.write(f"**Vector DBs**: {', '.join(matched_vdb) if matched_vdb else 'None'}")
+                st.write(f"**Retrieval**: {', '.join(matched_ret) if matched_ret else 'None'}")
+                st.write(f"**Evaluation**: {', '.join(matched_eval) if matched_eval else 'None'}")
+                st.write(f"**Python**: {'Yes' if 'python' in resume_lower else 'No'}")
+            with sc2:
+                st.error("#### Gaps / Missing Focus")
+                missing_vdb = vectordb_skills - set(matched_vdb)
+                missing_eval = eval_skills - set(matched_eval)
+                
+                st.write(f"**Missing Vector DBs**: {', '.join(list(missing_vdb)[:3]) if missing_vdb else 'None'}")
+                st.write(f"**Missing Eval Metrics**: {', '.join(list(missing_eval)[:3]) if missing_eval else 'None'}")
+        
+        st.write("---")
+        st.info("Note: This sandpit calculates a zero-shot keyword match similarity score. Real candidate profiles from the pool also incorporate platform activity history (notice periods, response rate, etc.) which optimizes the final ranking.")
+    else:
+        st.info("💡 Please upload a PDF/TXT resume or paste text into the area above to run the match suitability engine.")
 
 # Tab 4: Defused Traps Audit
 with tab_traps:
