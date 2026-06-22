@@ -2,6 +2,9 @@
 
 This repository contains our submission for the **Intelligent Candidate Discovery & Ranking Challenge (Track 1)**. It features a high-precision ranking engine designed to source the best **Senior AI Engineer (Founding Team)** candidates for **Redrob AI** from a pool of 100,000 profiles.
 
+### 🌐 Live Dashboard
+The application is deployed and live at: **[https://indiarunshack-lwgnws2psjtqz6ec4b57xd.streamlit.app/](https://indiarunshack-lwgnws2psjtqz6ec4b57xd.streamlit.app/)**
+
 ---
 
 ## 🏗️ System Architecture & Pipeline
