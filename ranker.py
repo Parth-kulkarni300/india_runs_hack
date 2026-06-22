@@ -524,16 +524,29 @@ def generate_reasoning(cand, rank):
             f"Good foundational skills, though less direct vector search production experience; serves as a high-quality filler."
         )
 
+LAST_RUN_STATS = {
+    "scanned": 0,
+    "honeypots": 0,
+    "consulting": 0,
+    "country_filtered": 0,
+    "location_filtered": 0,
+    "experience_filtered": 0,
+    "title_filtered": 0,
+    "shortlisted": 0
+}
+
 def score_candidate(cand, semantic_similarity=None, jd_title_keywords=None, jd_skills=None, jd_text=""):
     """
     Process filters and return final score if valid, else None.
     """
+    global LAST_RUN_STATS
     is_default = is_default_jd(jd_text)
     
     # 1. Hard filters
     # A. Honeypot check
     hp_flag, _ = is_honeypot(cand)
     if hp_flag:
+        LAST_RUN_STATS["honeypots"] += 1
         return None
         
     # B. Consulting check
@@ -544,6 +557,7 @@ def score_candidate(cand, semantic_similarity=None, jd_title_keywords=None, jd_s
         exclude_consulting = any(kw in jd_text.lower() for kw in ["consulting/service", "consulting company", "service company", "tcs", "infosys", "wipro", "accenture", "cognizant", "capgemini"])
         
     if exclude_consulting and is_consulting_only(cand):
+        LAST_RUN_STATS["consulting"] += 1
         return None
         
     profile = cand.get("profile", {})
@@ -558,6 +572,7 @@ def score_candidate(cand, semantic_similarity=None, jd_title_keywords=None, jd_s
     if is_india_only:
         country = profile.get("country", "").strip()
         if country.lower() != "india":
+            LAST_RUN_STATS["country_filtered"] += 1
             return None
         
     # D. Location & Relocation Check
@@ -574,6 +589,7 @@ def score_candidate(cand, semantic_similarity=None, jd_title_keywords=None, jd_s
         willing_relocate = cand.get("redrob_signals", {}).get("willing_to_relocate", False)
         is_matched_city = any(c in location for c in target_cities)
         if not is_matched_city and not willing_relocate:
+            LAST_RUN_STATS["location_filtered"] += 1
             return None
         
     # E. Experience Check
@@ -587,11 +603,13 @@ def score_candidate(cand, semantic_similarity=None, jd_title_keywords=None, jd_s
         
     years_exp = profile.get("years_of_experience", 0)
     if years_exp < min_exp or years_exp > max_exp:
+        LAST_RUN_STATS["experience_filtered"] += 1
         return None
         
     # 2. Compute scores
     title_s = calculate_title_score(cand, jd_title_keywords=None if is_default else jd_title_keywords)
     if title_s == 0.0:
+        LAST_RUN_STATS["title_filtered"] += 1
         return None
         
     skill_s = calculate_skill_score(cand, jd_skills=None if is_default else jd_skills)
@@ -662,6 +680,20 @@ def rank_candidates(candidates_list, jd_text=""):
     Ranks a list of candidate dictionaries.
     Uses precomputed neural embeddings if available.
     """
+    global LAST_RUN_STATS
+    
+    # Reset stats
+    LAST_RUN_STATS = {
+        "scanned": len(candidates_list),
+        "honeypots": 0,
+        "consulting": 0,
+        "country_filtered": 0,
+        "location_filtered": 0,
+        "experience_filtered": 0,
+        "title_filtered": 0,
+        "shortlisted": 0
+    }
+    
     similarities_dict = {}
     
     # If precomputed embeddings exist and JD is provided, compute semantic scores
@@ -713,4 +745,5 @@ def rank_candidates(candidates_list, jd_text=""):
             c["reasoning"] = f"Candidate ranks outside top 100 shortlist (Rank {rank})."
         ranked_results.append(c)
         
+    LAST_RUN_STATS["shortlisted"] = len(ranked_results)
     return ranked_results

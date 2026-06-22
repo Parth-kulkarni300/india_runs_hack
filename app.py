@@ -601,10 +601,29 @@ with st.expander("⚙️ DISCOVERY ENGINE CONTROL CENTER & FILTERS", expanded=Tr
         experience_range = st.slider("Required Experience (Years)", 0.0, 20.0, (5.0, 9.0), step=0.5)
         max_notice_period = st.slider("Maximum Notice Period (Days)", 0, 180, 90, step=15)
         
+        is_default = ranker.is_default_jd(jd_text)
+        
         # Checkboxes and File Uploader
         c_col1, c_col2 = st.columns(2)
         with c_col1:
-            only_relocate = st.checkbox("Include Noida/Pune or willing to relocate", value=True)
+            if is_default:
+                reloc_label = "Include Noida/Pune or willing to relocate"
+                show_reloc = True
+            else:
+                tech_cities = ["pune", "noida", "gurgaon", "delhi", "ncr", "bangalore", "bengaluru", "hyderabad", "mumbai", "chennai", "kolkata", "san francisco", "london", "new york"]
+                mentioned_cities = [c.capitalize() for c in tech_cities if c in jd_text.lower()]
+                if mentioned_cities:
+                    reloc_label = f"Include {', '.join(mentioned_cities)} or willing to relocate"
+                    show_reloc = True
+                else:
+                    reloc_label = "Include target cities or willing to relocate"
+                    show_reloc = False
+            
+            if show_reloc:
+                only_relocate = st.checkbox(reloc_label, value=True)
+            else:
+                only_relocate = False
+                st.markdown("<div style='color: #9CA3AF; font-size: 0.85rem; padding-top: 0.5rem;'>📍 No location constraints found in custom JD.</div>", unsafe_allow_html=True)
         with c_col2:
             limit_toggle = st.checkbox("Limit to first 10,000 candidates (faster)", value=True)
             
@@ -698,23 +717,125 @@ for c in ranked_candidates:
     # Relocation filter
     if only_relocate:
         location = c["location"].lower()
-        is_pune_noida = any(l in location for l in ["pune", "noida", "gurgaon", "delhi", "ncr"])
-        willing_relocate = c["candidate_raw"].get("redrob_signals", {}).get("willing_to_relocate", False)
-        if not is_pune_noida and not willing_relocate:
-            continue
+        if is_default:
+            target_cities = ["pune", "noida", "gurgaon", "delhi", "ncr"]
+        else:
+            tech_cities = ["pune", "noida", "gurgaon", "delhi", "ncr", "bangalore", "bengaluru", "hyderabad", "mumbai", "chennai", "kolkata", "san francisco", "london", "new york"]
+            target_cities = [ct for ct in tech_cities if ct in jd_text.lower()]
+            
+        if target_cities:
+            willing_relocate = c["candidate_raw"].get("redrob_signals", {}).get("willing_to_relocate", False)
+            is_matched_city = any(ct in location for ct in target_cities)
+            if not is_matched_city and not willing_relocate:
+                continue
             
     filtered_ranked.append(c)
 
 # Layout Metrics Row
+run_stats = getattr(ranker, "LAST_RUN_STATS", {})
+actual_hp = run_stats.get("honeypots", total_hp)
+actual_consulting = run_stats.get("consulting", total_consulting)
+
 m1, m2, m3, m4 = st.columns(4)
 with m1:
     st.markdown(f"<div class='metric-card'><div class='metric-label'>Scanned Database</div><div class='metric-num'>{total_raw:,}</div><div class='metric-label'>Total Candidates</div></div>", unsafe_allow_html=True)
 with m2:
-    st.markdown(f"<div class='metric-card'><div class='metric-label'>Traps Defused</div><div class='metric-num' style='color: #EF4444;'>{total_hp:,}</div><div class='metric-label'>Honeypots Eliminated</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-label'>Traps Defused</div><div class='metric-num' style='color: #EF4444;'>{actual_hp:,}</div><div class='metric-label'>Honeypots Eliminated</div></div>", unsafe_allow_html=True)
 with m3:
-    st.markdown(f"<div class='metric-card'><div class='metric-label'>Consulting Filtered</div><div class='metric-num' style='color: #F59E0B;'>{total_consulting:,}</div><div class='metric-label'>Service Profiles Blocked</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-label'>Consulting Filtered</div><div class='metric-num' style='color: #F59E0B;'>{actual_consulting:,}</div><div class='metric-label'>Service Profiles Blocked</div></div>", unsafe_allow_html=True)
 with m4:
     st.markdown(f"<div class='metric-card'><div class='metric-label'>Ranked Shortlist</div><div class='metric-num'>{len(filtered_ranked)}</div><div class='metric-label'>Matches After Filters</div></div>", unsafe_allow_html=True)
+# Funnel & Filter Audit Log Expander
+with st.expander("🔍 Programmatic Funnel & Filter Audit Log", expanded=False):
+    run_stats = getattr(ranker, "LAST_RUN_STATS", {})
+    if run_stats:
+        f_col1, f_col2 = st.columns([1.3, 1.0])
+        with f_col1:
+            st.markdown("#### 🎯 Candidate Discovery Funnel")
+            
+            # Prepare data
+            stages = [
+                "1. Scanned Pool",
+                "2. Honeypots Blocked",
+                "3. Service Blocked",
+                "4. Country Mismatch",
+                "5. Relocation Blocked",
+                "6. Out-of-Range Exp",
+                "7. Non-Tech Title",
+                "8. Shortlisted Matches"
+            ]
+            candidates_count = [
+                run_stats.get("scanned", 0),
+                run_stats.get("honeypots", 0),
+                run_stats.get("consulting", 0),
+                run_stats.get("country_filtered", 0),
+                run_stats.get("location_filtered", 0),
+                run_stats.get("experience_filtered", 0),
+                run_stats.get("title_filtered", 0),
+                run_stats.get("shortlisted", 0)
+            ]
+            
+            df_funnel = pd.DataFrame({
+                "Stage": stages,
+                "Candidates": candidates_count
+            })
+            
+            # Generate horizontal bar chart representing funnel stages
+            fig_funnel = px.bar(
+                df_funnel,
+                x="Candidates",
+                y="Stage",
+                orientation="h",
+                color="Candidates",
+                color_continuous_scale=["#EF4444", "#F59E0B", "#38BDF8", "#00E5FF"],
+                text="Candidates"
+            )
+            fig_funnel.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#F3F4F6",
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=300,
+                coloraxis_showscale=False,
+                xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", title="Number of Candidates"),
+                yaxis=dict(showgrid=False, tickfont=dict(size=11))
+            )
+            fig_funnel.update_traces(
+                textposition="outside",
+                marker_line_color="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig_funnel, use_container_width=True, config={'displayModeBar': False})
+            
+        with f_col2:
+            st.markdown("#### 🛡️ Backend Audit Report")
+            
+            # Check custom JD constraints dynamically
+            exclude_consulting = is_default or any(kw in jd_text.lower() for kw in ["consulting/service", "consulting company", "service company", "tcs", "infosys", "wipro", "accenture", "cognizant", "capgemini"])
+            is_india_only = is_default or any(kw in jd_text.lower() for kw in ["india", "pune", "noida", "delhi", "gurgaon", "ncr", "bangalore", "bengaluru", "hyderabad", "mumbai", "chennai", "kolkata"])
+            
+            # Dim styles for disabled filters
+            consulting_style = "margin: 0.4rem 0; font-size: 0.9rem; color: #FBBF24;" if exclude_consulting else "margin: 0.4rem 0; font-size: 0.9rem; color: #6B7280; opacity: 0.5;"
+            country_style = "margin: 0.4rem 0; font-size: 0.9rem; color: #E5E7EB;" if is_india_only else "margin: 0.4rem 0; font-size: 0.9rem; color: #6B7280; opacity: 0.5;"
+            reloc_style = "margin: 0.4rem 0; font-size: 0.9rem; color: #E5E7EB;" if (is_default or show_reloc) else "margin: 0.4rem 0; font-size: 0.9rem; color: #6B7280; opacity: 0.5;"
+            
+            consulting_label = "Service/Consulting Blocked:" if exclude_consulting else "Service Filter (N/A for this JD):"
+            country_label = "Country Mismatch:" if is_india_only else "Country Check (N/A for this JD):"
+            reloc_label = "Relocation Disqualified:" if (is_default or show_reloc) else "Relocation Check (N/A for this JD):"
+            
+            st.markdown(f"""
+            <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 12px; padding: 1.25rem; height: 300px; overflow-y: auto;">
+                <p style="margin: 0.4rem 0; font-size: 0.9rem; color: #E5E7EB;"><b>1. Total Scanned Pool:</b> <span style="color: #38BDF8; font-weight:700;">{run_stats.get("scanned", 0):,}</span> profiles</p>
+                <p style="margin: 0.4rem 0; font-size: 0.9rem; color: #F87171;"><b>2. Honeypot Traps Blocked:</b> <span style="color: #EF4444; font-weight:700;">-{run_stats.get("honeypots", 0):,}</span> accounts (contradictory logs)</p>
+                <p style="{consulting_style}"><b>3. {consulting_label}</b> <span style="color: #F59E0B; font-weight:700;">-{run_stats.get("consulting", 0):,}</span> profiles</p>
+                <p style="{country_style}"><b>4. {country_label}</b> <span style="color: #9CA3AF; font-weight:700;">-{run_stats.get("country_filtered", 0):,}</span> profiles</p>
+                <p style="{reloc_style}"><b>5. {reloc_label}</b> <span style="color: #9CA3AF; font-weight:700;">-{run_stats.get("location_filtered", 0):,}</span> profiles</p>
+                <p style="margin: 0.4rem 0; font-size: 0.9rem; color: #E5E7EB;"><b>6. Out-of-Range Experience:</b> <span style="color: #9CA3AF; font-weight:700;">-{run_stats.get("experience_filtered", 0):,}</span> profiles (below/above target years)</p>
+                <p style="margin: 0.4rem 0; font-size: 0.9rem; color: #E5E7EB;"><b>7. Non-Technical / Irrelevant Title:</b> <span style="color: #9CA3AF; font-weight:700;">-{run_stats.get("title_filtered", 0):,}</span> profiles (disallowed HR/Sales/Finance roles)</p>
+                <div style="border-top: 1px solid rgba(255,255,255,0.08); margin-top: 0.5rem; padding-top: 0.5rem;">
+                    <p style="margin: 0; font-size: 0.95rem; color: #00E5FF; font-weight: 700;"><b>Qualified Candidates Shortlisted:</b> {run_stats.get("shortlisted", 0):,}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 st.write("")
 st.write("")
