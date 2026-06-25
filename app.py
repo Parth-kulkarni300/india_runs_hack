@@ -566,7 +566,7 @@ def register_custom_candidate_embedding(cand_dict, resume_text):
 
 # Main Layout
 st.markdown("<div class='main-title'>🧠 Redrob AI Recruiter Brain</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-title'>Intelligent Candidate Discovery, Trap Filtering, and Predictive Ranking Dashboard</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-title'>Intelligent Candidate Discovery, Anomaly Filtering, and Predictive Ranking Dashboard</div>", unsafe_allow_html=True)
 
 # Sidebar Configuration
 st.sidebar.markdown("""
@@ -667,7 +667,7 @@ if uploaded_file:
         f.write(uploaded_file.getvalue())
     file_to_load = temp_path
 
-with st.spinner("Loading candidate database and scanning for traps..."):
+with st.spinner("Loading candidate database and scanning for anomalies..."):
     candidates_list, total_raw, total_hp, total_consulting = load_candidates(file_to_load, limit=load_limit)
 
 if not candidates_list:
@@ -692,7 +692,7 @@ st.sidebar.markdown(f"""
         <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #E5E7EB;"><b>Database:</b> <span style="color: #38BDF8; font-weight:600;">Connected</span> 🟢</p>
         <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #E5E7EB;"><b>Embeddings:</b> <span style="color: #34D399; font-weight:600;">{"Loaded" if ranker.EMBEDDINGS_LOADED else "Not Found"}</span> 🟢</p>
         <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #D1D5DB; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.3rem;"><b>Total Scanned:</b> {total_raw:,}</p>
-        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #F87171;"><b>Traps Blocked:</b> {total_hp:,}</p>
+        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #F87171;"><b>Anomalies Blocked:</b> {total_hp:,}</p>
         <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #FBBF24;"><b>Consulting Filtered:</b> {total_consulting:,}</p>
         <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #38BDF8;"><b>Custom Uploads:</b> {len(st.session_state.custom_candidates)}</p>
     </div>
@@ -740,7 +740,7 @@ m1, m2, m3, m4 = st.columns(4)
 with m1:
     st.markdown(f"<div class='metric-card'><div class='metric-label'>Scanned Database</div><div class='metric-num'>{total_raw:,}</div><div class='metric-label'>Total Candidates</div></div>", unsafe_allow_html=True)
 with m2:
-    st.markdown(f"<div class='metric-card'><div class='metric-label'>Traps Defused</div><div class='metric-num' style='color: #EF4444;'>{actual_hp:,}</div><div class='metric-label'>Honeypots Eliminated</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-label'>Profile Anomalies</div><div class='metric-num' style='color: #EF4444;'>{actual_hp:,}</div><div class='metric-label'>Anomalous Profiles Blocked</div></div>", unsafe_allow_html=True)
 with m3:
     st.markdown(f"<div class='metric-card'><div class='metric-label'>Consulting Filtered</div><div class='metric-num' style='color: #F59E0B;'>{actual_consulting:,}</div><div class='metric-label'>Service Profiles Blocked</div></div>", unsafe_allow_html=True)
 with m4:
@@ -756,7 +756,7 @@ with st.expander("🔍 Programmatic Funnel & Filter Audit Log", expanded=False):
             # Prepare data
             stages = [
                 "1. Scanned Pool",
-                "2. Honeypots Blocked",
+                "2. Anomalies Blocked",
                 "3. Service Blocked",
                 "4. Country Mismatch",
                 "5. Relocation Blocked",
@@ -825,7 +825,7 @@ with st.expander("🔍 Programmatic Funnel & Filter Audit Log", expanded=False):
             st.markdown(f"""
             <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 12px; padding: 1.25rem; height: 300px; overflow-y: auto;">
                 <p style="margin: 0.4rem 0; font-size: 0.9rem; color: #E5E7EB;"><b>1. Total Scanned Pool:</b> <span style="color: #38BDF8; font-weight:700;">{run_stats.get("scanned", 0):,}</span> profiles</p>
-                <p style="margin: 0.4rem 0; font-size: 0.9rem; color: #F87171;"><b>2. Honeypot Traps Blocked:</b> <span style="color: #EF4444; font-weight:700;">-{run_stats.get("honeypots", 0):,}</span> accounts (contradictory logs)</p>
+                <p style="margin: 0.4rem 0; font-size: 0.9rem; color: #F87171;"><b>2. Profile Anomalies Blocked:</b> <span style="color: #EF4444; font-weight:700;">-{run_stats.get("honeypots", 0):,}</span> accounts (contradictory logs)</p>
                 <p style="{consulting_style}"><b>3. {consulting_label}</b> <span style="color: #F59E0B; font-weight:700;">-{run_stats.get("consulting", 0):,}</span> profiles</p>
                 <p style="{country_style}"><b>4. {country_label}</b> <span style="color: #9CA3AF; font-weight:700;">-{run_stats.get("country_filtered", 0):,}</span> profiles</p>
                 <p style="{reloc_style}"><b>5. {reloc_label}</b> <span style="color: #9CA3AF; font-weight:700;">-{run_stats.get("location_filtered", 0):,}</span> profiles</p>
@@ -841,7 +841,7 @@ st.write("")
 st.write("")
 
 # Create Tabs
-tab_list, tab_dive, tab_matcher, tab_traps = st.tabs(["📋 Candidate Shortlist", "🔍 Profile Deep Dive", "📄 Resume Matcher", "🛡️ Defused Traps Audit"])
+tab_list, tab_dive, tab_matcher, tab_traps = st.tabs(["📋 Candidate Shortlist", "🔍 Profile Deep Dive", "📄 Resume Matcher", "🛡️ Anomalies Audit"])
 
 # Tab 1: Shortlist
 with tab_list:
@@ -1417,8 +1417,8 @@ with tab_matcher:
 
 # Tab 4: Defused Traps Audit
 with tab_traps:
-    st.markdown("### 🛡️ Programmatic Trap Filtering Audit Log")
-    st.write("Our AI Engine runs multiple physical and logical consistency audits to catch honeypot trap accounts and IT services consulting profiles.")
+    st.markdown("### 🛡️ Programmatic Profile Anomaly Audit Log")
+    st.write("Our AI Engine runs multiple physical and logical consistency audits to catch anomalous profile accounts and IT services consulting profiles.")
     
     # Check for honeypot count stats
     # Let's count trap types
@@ -1496,7 +1496,7 @@ with tab_traps:
                 caught_details.append({
                     "ID": cand["candidate_id"],
                     "Name": profile.get("anonymized_name", "Anonymous"),
-                    "Type": "Honeypot Account",
+                    "Type": "Anomalous Account",
                     "Reason": hp_reason
                 })
         elif is_c:
@@ -1512,7 +1512,7 @@ with tab_traps:
     # Display breakdown pie chart
     t_cols = st.columns([1.2, 1.8])
     with t_cols[0]:
-        st.markdown("#### Trap Category Distribution")
+        st.markdown("#### Anomaly Category Distribution")
         non_zero_traps = {k: v for k, v in trap_counts.items() if v > 0}
         if non_zero_traps:
             df_traps = pd.DataFrame(list(non_zero_traps.items()), columns=["Category", "Blocked Profiles"])
@@ -1536,7 +1536,7 @@ with tab_traps:
             st.write("No threats recorded.")
             
     with t_cols[1]:
-        st.markdown("#### Real-time Threats Defused Audit Log")
+        st.markdown("#### Real-time Anomalies Defused Audit Log")
         st.write("Flagged profiles caught by the Redrob Recruiter system:")
         df_caught = pd.DataFrame(caught_details)
         if not df_caught.empty:
