@@ -1421,15 +1421,15 @@ with tab_traps:
     st.write("Our AI Engine runs multiple physical and logical consistency audits to catch anomalous profile accounts and IT services consulting profiles.")
     
     # Check for honeypot count stats
-    # Let's count trap types
-    trap_counts = {
-        "Date Conflict (Signup > Active)": 0,
-        "Skill Duration Mismatch (Skill > Exp)": 0,
-        "Proficiency Contradiction (Expert with 0 mo)": 0,
-        "Timeline Contradiction (Job pre-founding)": 0,
-        "Job Duration Mismatch (Job > Comp age)": 0,
-        "IT Consulting Entire Career": 0
+    # Let's count trap types for the 5 anomaly parameters
+    anomaly_counts = {
+        "1. Date Conflict (Signup > Active)": 0,
+        "2. Skill Duration Mismatch (Skill > Exp + 1.5 Yrs)": 0,
+        "3. Proficiency Contradiction (Expert with 0 mo)": 0,
+        "4. Timeline Contradiction (Job pre-founding)": 0,
+        "5. Job Duration Mismatch (Job > Comp age)": 0
     }
+    consulting_count = 0
     
     caught_details = []
     
@@ -1440,58 +1440,67 @@ with tab_traps:
         hp, hp_reason = ranker.is_honeypot(cand)
         
         if hp:
-            # Identify sub-reason
+            # Identify sub-reason to attribute to exactly one of the 5 anomaly parameters
             signals = cand.get("redrob_signals", {})
             signup = ranker.parse_date(signals.get("signup_date"))
             active = ranker.parse_date(signals.get("last_active_date"))
             profile = cand.get("profile", {})
             years_exp = profile.get("years_of_experience", 0)
             
+            # Rule 1: Signup Date after Active Date
             if signup and active and signup > active:
-                trap_counts["Date Conflict (Signup > Active)"] += 1
-            
-            skills_mismatch = False
-            expert_zero = False
-            for s in cand.get("skills", []):
-                dur_years = s.get("duration_months", 0) / 12.0
-                if dur_years > years_exp + 0.5:
-                    skills_mismatch = True
-                if s.get("proficiency") in ["expert", "advanced"] and s.get("duration_months", 0) == 0:
-                    expert_zero = True
-                    
-            if skills_mismatch:
-                trap_counts["Skill Duration Mismatch (Skill > Exp)"] += 1
-            if expert_zero:
-                trap_counts["Proficiency Contradiction (Expert with 0 mo)"] += 1
-                
-            timeline_pre = False
-            timeline_dur = False
-            career = cand.get("career_history", [])
-            for job in career:
-                comp = job.get("company", "")
-                if comp in ranker.FOUNDING_YEARS:
-                    f_year = ranker.FOUNDING_YEARS[comp]
-                    start_str = job.get("start_date")
-                    if start_str:
-                        try:
-                            start_year = int(start_str.split("-")[0])
-                            if start_year < f_year:
-                                timeline_pre = True
-                        except:
-                            pass
-                    dur_years = job.get("duration_months", 0) / 12.0
-                    max_dur = ranker.CURRENT_REF_DATE.year - f_year
-                    if dur_years > max_dur:
-                        timeline_dur = True
-                        
-            if timeline_pre:
-                trap_counts["Timeline Contradiction (Job pre-founding)"] += 1
-            if timeline_dur:
-                trap_counts["Job Duration Mismatch (Job > Comp age)"] += 1
-                
-            if not (signup and active and signup > active) and not skills_mismatch and not expert_zero and not timeline_pre and not timeline_dur:
-                trap_counts["Timeline Contradiction (Job pre-founding)"] += 1
-                
+                anomaly_counts["1. Date Conflict (Signup > Active)"] += 1
+            else:
+                # Rule 2: Skill Duration Exceeds Experience + 1.5 Year Buffer
+                skills_mismatch = False
+                for s in cand.get("skills", []):
+                    dur_years = s.get("duration_months", 0) / 12.0
+                    if dur_years > years_exp + 1.5:
+                        skills_mismatch = True
+                        break
+                if skills_mismatch:
+                    anomaly_counts["2. Skill Duration Mismatch (Skill > Exp + 1.5 Yrs)"] += 1
+                else:
+                    # Rule 3: Expert/Advanced with 0 months
+                    expert_zero = False
+                    for s in cand.get("skills", []):
+                        if s.get("proficiency") in ["expert", "advanced"] and s.get("duration_months", 0) == 0:
+                            expert_zero = True
+                            break
+                    if expert_zero:
+                        anomaly_counts["3. Proficiency Contradiction (Expert with 0 mo)"] += 1
+                    else:
+                        # Rule 4 & 5: Job pre-founding or job duration exceeds company age
+                        timeline_pre = False
+                        timeline_dur = False
+                        career = cand.get("career_history", [])
+                        for job in career:
+                            comp = job.get("company", "")
+                            if comp in ranker.FOUNDING_YEARS:
+                                f_year = ranker.FOUNDING_YEARS[comp]
+                                start_str = job.get("start_date")
+                                if start_str:
+                                    try:
+                                        start_year = int(start_str.split("-")[0])
+                                        if start_year < f_year:
+                                            timeline_pre = True
+                                            break
+                                    except:
+                                        pass
+                                dur_years = job.get("duration_months", 0) / 12.0
+                                max_dur = ranker.CURRENT_REF_DATE.year - f_year
+                                if dur_years > max_dur:
+                                    timeline_dur = True
+                                    break
+                                    
+                        if timeline_pre:
+                            anomaly_counts["4. Timeline Contradiction (Job pre-founding)"] += 1
+                        elif timeline_dur:
+                            anomaly_counts["5. Job Duration Mismatch (Job > Comp age)"] += 1
+                        else:
+                            # Fallback just in case some other check matched in is_honeypot
+                            anomaly_counts["4. Timeline Contradiction (Job pre-founding)"] += 1
+                            
             if len(caught_details) < 50:
                 caught_details.append({
                     "ID": cand["candidate_id"],
@@ -1500,7 +1509,7 @@ with tab_traps:
                     "Reason": hp_reason
                 })
         elif is_c:
-            trap_counts["IT Consulting Entire Career"] += 1
+            consulting_count += 1
             if len(caught_details) < 50:
                 caught_details.append({
                     "ID": cand["candidate_id"],
@@ -1510,30 +1519,39 @@ with tab_traps:
                 })
                 
     # Display breakdown pie chart
-    t_cols = st.columns([1.2, 1.8])
+    t_cols = st.columns([1.6, 1.4])
     with t_cols[0]:
         st.markdown("#### Anomaly Category Distribution")
-        non_zero_traps = {k: v for k, v in trap_counts.items() if v > 0}
-        if non_zero_traps:
-            df_traps = pd.DataFrame(list(non_zero_traps.items()), columns=["Category", "Blocked Profiles"])
-            fig_traps = px.pie(
-                df_traps,
-                names="Category",
-                values="Blocked Profiles",
-                hole=0.4,
-                color_discrete_sequence=["#EF4444", "#F59E0B", "#38BDF8", "#00E5FF", "#1E3A8A", "#4B5563"]
+        df_traps = pd.DataFrame(list(anomaly_counts.items()), columns=["Category", "Blocked Profiles"])
+        fig_traps = px.pie(
+            df_traps,
+            names="Category",
+            values="Blocked Profiles",
+            hole=0.4,
+            color_discrete_sequence=["#EF4444", "#F59E0B", "#38BDF8", "#00E5FF", "#1E3A8A"]
+        )
+        fig_traps.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font_color="#F3F4F6",
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=380,
+            legend=dict(
+                orientation="v",
+                yanchor="middle",
+                y=0.5,
+                xanchor="left",
+                x=1.05,
+                font=dict(size=13)
             )
-            fig_traps.update_layout(
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                font_color="#F3F4F6",
-                margin=dict(l=10, r=10, t=10, b=10),
-                height=250,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
-            )
-            st.plotly_chart(fig_traps, use_container_width=True, config={'displayModeBar': False})
-        else:
-            st.write("No threats recorded.")
+        )
+        fig_traps.update_traces(
+            sort=False,
+            textinfo='percent',
+            textfont_size=14,
+            marker=dict(line=dict(color='#0B0E14', width=2))
+        )
+        st.plotly_chart(fig_traps, use_container_width=True, config={'displayModeBar': False})
             
     with t_cols[1]:
         st.markdown("#### Real-time Anomalies Defused Audit Log")

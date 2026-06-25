@@ -87,7 +87,7 @@ def is_honeypot(cand):
     years_exp = profile.get("years_of_experience", 0)
     for s in cand.get("skills", []):
         dur_years = s.get("duration_months", 0) / 12.0
-        if dur_years > years_exp + 0.5:
+        if dur_years > years_exp + 1.5:
             return True, f"Skill '{s['name']}' duration ({dur_years:.1f} yrs) exceeds total experience ({years_exp:.1f} yrs)."
             
     # 3. Expert/Advanced skill with 0 duration
