@@ -78,13 +78,6 @@ def is_honeypot(cand):
     signup = parse_date(signals.get("signup_date"))
     active = parse_date(signals.get("last_active_date"))
     
-    # 0. Salary range inversion (min > max is physically impossible)
-    sal = signals.get("expected_salary_range_inr_lpa", {})
-    sal_min = sal.get("min", 0)
-    sal_max = sal.get("max", 0)
-    if sal_min > sal_max:
-        return True, f"Salary range is inverted: min ({sal_min} LPA) > max ({sal_max} LPA)."
-
     # 1. Signup date after last active date
     if signup and active and signup > active:
         return True, "Signup date is after last active date."
@@ -94,7 +87,7 @@ def is_honeypot(cand):
     years_exp = profile.get("years_of_experience", 0)
     for s in cand.get("skills", []):
         dur_years = s.get("duration_months", 0) / 12.0
-        if dur_years > years_exp + 0.5:
+        if dur_years > years_exp + 1.5:
             return True, f"Skill '{s['name']}' duration ({dur_years:.1f} yrs) exceeds total experience ({years_exp:.1f} yrs)."
             
     # 3. Expert/Advanced skill with 0 duration
