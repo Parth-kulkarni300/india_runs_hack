@@ -630,12 +630,15 @@ def score_candidate(cand, semantic_similarity=None, jd_title_keywords=None, jd_s
         
     skill_s = calculate_skill_score(cand, jd_skills=None if is_default else jd_skills)
     
-    # NLP Match: check if precomputed semantic similarity is provided, otherwise fallback to keyword search
+    # NLP Match: semantic similarity when embeddings are available, else keyword fallback
     if semantic_similarity is not None:
-        # Cosine similarity is in [-1, 1], usually [0.2, 0.8] for text. Scale to [0, 1] for scoring.
         nlp_s = max(0.0, semantic_similarity)
     else:
         nlp_s = calculate_history_score(cand, jd_text=jd_text)
+
+    # Career description score — always computed as an additive bonus on top of NLP
+    # Rewards candidates who describe production impact in their job history text
+    career_s = calculate_history_score(cand, jd_text=jd_text)
         
     # --- Integration of newly analyzed dataset signals ---
     signals = cand.get("redrob_signals", {})
@@ -649,25 +652,40 @@ def score_candidate(cand, semantic_similarity=None, jd_title_keywords=None, jd_s
         elif tier == "tier_2":
             edu_score = max(edu_score, 0.05)
             
-    # B. GitHub Activity Signal
+    # B. GitHub Activity Signal — JD explicitly values open-source contributions
     github_score = 0.0
     github_act = signals.get("github_activity_score", -1)
     if github_act > 0:
-        github_score = min(github_act / 200.0, 0.08) # Up to 0.08 bonus for active open-source contributors
-        
-    # C. Verified Skill Assessment Signal
+        github_score = min(github_act / 100.0, 0.20)  # up to 0.20 bonus (was 0.08)
+
+    # C. Verified Skill Assessment Signal — all tests, weighted by score quality
     assess_score = 0.0
     assessments = signals.get("skill_assessment_scores", {})
-    core_ai_tests = {"NLP", "Python", "Fine-tuning LLMs", "Machine Learning", "Deep Learning"}
-    test_bonus_count = 0
+    # Primary AI/ML tests get full weight; adjacent tests get half weight
+    primary_tests = {"NLP", "Python", "Fine-tuning LLMs", "Machine Learning", "Deep Learning"}
+    adjacent_tests = {"Data Structures", "System Design", "SQL", "Statistics", "Cloud Computing"}
     for test_name, test_val in assessments.items():
-        if test_name in core_ai_tests and test_val >= 50.0:
-            test_bonus_count += 1
-    assess_score = min(test_bonus_count * 0.05, 0.10) # max 0.10 bonus (two passed assessments)
-    
+        if test_name in primary_tests and test_val >= 50.0:
+            assess_score += 0.05 * (test_val / 100.0)   # up to 0.05 per primary test
+        elif test_name in adjacent_tests and test_val >= 70.0:
+            assess_score += 0.02 * (test_val / 100.0)   # up to 0.02 per adjacent test
+    assess_score = min(assess_score, 0.20)  # cap at 0.20 (was 0.10)
+
+    # D. Profile Completeness Signal — high completeness signals serious, engaged candidates
+    completeness_score = 0.0
+    completeness = signals.get("profile_completeness_score", 0)
+    if completeness >= 90:
+        completeness_score = 0.08
+    elif completeness >= 75:
+        completeness_score = 0.05
+    elif completeness >= 50:
+        completeness_score = 0.02
+
     # Calculate base score with signal bonuses
+    # career_s is capped at 0.5 internally; scale it down to add as a bonus (max ~0.15)
     base_score = title_s * 0.4 + skill_s * 0.3 + nlp_s * 0.3
-    base_score += edu_score + github_score + assess_score
+    base_score += career_s * 0.3  # career description bonus — "production retrieval" beats pure skill lists
+    base_score += edu_score + github_score + assess_score + completeness_score
     
     # 3. Availability Multiplier & Interest
     availability_mult = calculate_availability_multiplier(cand)
