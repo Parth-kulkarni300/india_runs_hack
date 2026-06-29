@@ -1,3 +1,4 @@
+import argparse
 import json
 import numpy as np
 import os
@@ -11,8 +12,15 @@ except ImportError:
     exit(1)
 
 def main():
+    parser = argparse.ArgumentParser(description="Pre-compute candidate embeddings for semantic ranking.")
+    parser.add_argument("--candidates", type=str, default=None, help="Absolute path to candidates.jsonl")
+    args = parser.parse_args()
+
     # Setup paths
-    candidates_file = Path("../[PUB] India_runs_data_and_ai_challenge/India_runs_data_and_ai_challenge/candidates.jsonl")
+    if args.candidates:
+        candidates_file = Path(args.candidates)
+    else:
+        candidates_file = Path("../[PUB] India_runs_data_and_ai_challenge/India_runs_data_and_ai_challenge/candidates.jsonl")
     output_embeddings_file = Path("candidate_embeddings.npy")
     
     if not candidates_file.exists():
