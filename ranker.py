@@ -78,16 +78,23 @@ def is_honeypot(cand):
     signup = parse_date(signals.get("signup_date"))
     active = parse_date(signals.get("last_active_date"))
     
+    # 0. Salary range inversion (min > max is physically impossible)
+    sal = signals.get("expected_salary_range_inr_lpa", {})
+    sal_min = sal.get("min", 0)
+    sal_max = sal.get("max", 0)
+    if sal_min > sal_max:
+        return True, f"Salary range is inverted: min ({sal_min} LPA) > max ({sal_max} LPA)."
+
     # 1. Signup date after last active date
     if signup and active and signup > active:
         return True, "Signup date is after last active date."
-        
+
     # 2. Skill duration exceeds total years of experience + buffer
     profile = cand.get("profile", {})
     years_exp = profile.get("years_of_experience", 0)
     for s in cand.get("skills", []):
         dur_years = s.get("duration_months", 0) / 12.0
-        if dur_years > years_exp + 1.5:
+        if dur_years > years_exp + 0.5:
             return True, f"Skill '{s['name']}' duration ({dur_years:.1f} yrs) exceeds total experience ({years_exp:.1f} yrs)."
             
     # 3. Expert/Advanced skill with 0 duration
@@ -231,6 +238,15 @@ def calculate_title_score(cand, jd_title_keywords=None):
         
     # If no jd keywords provided, fallback to the original AI/ML hardcoded logic
     if not jd_title_keywords:
+        # JD explicitly disqualifies CV/speech/robotics specialists without NLP/IR exposure
+        cv_speech_regex = re.compile(r"\b(computer vision|speech|robotics|acoustic)\b")
+        if cv_speech_regex.search(current_title):
+            nlp_ir_skills = {"nlp", "information retrieval", "embeddings", "vector search",
+                             "sentence-transformers", "semantic search", "retrieval", "rag"}
+            cand_skills_lower = {s.get("name", "").lower() for s in cand.get("skills", [])}
+            if not cand_skills_lower & nlp_ir_skills:
+                return 0.0
+
         # ML/AI specific titles
         ml_titles_regex = re.compile(r"\b(ml|ai|machine learning|nlp|deep learning|computer vision|search|retrieval|ranking|applied scientist|data scientist)\b")
         if ml_titles_regex.search(current_title):
@@ -512,9 +528,9 @@ def generate_reasoning(cand, rank):
         elif not profile.get('location', '').lower() in ['pune', 'noida', 'delhi', 'gurgaon']:
             concern = " Relocation to Pune/Noida offices required, but candidate is willing to relocate."
             
-        highlight_prefix = f" {edu_tier} with" if edu_tier else ""
+        highlight_prefix = f" ({edu_tier})" if edu_tier else ""
         return (
-            f"Strong{highlight_prefix} candidate with {exp:.1f} years experience as {title}. Shipped search/retrieval components {skills_str}. "
+            f"Strong candidate{highlight_prefix} with {exp:.1f} years experience as {title}. Shipped search/retrieval components {skills_str}. "
             f"Highly active on platform.{concern}"
         )
     else:

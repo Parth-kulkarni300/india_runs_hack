@@ -79,16 +79,26 @@ def main():
         ranked_shortlist = []
     else:
         ranked_shortlist = ranked[:100]
-        
+
     print(f"Shortlisted top {len(ranked_shortlist)} candidates.")
-    
+
+    # Normalize scores to [0, 1] relative to the top candidate
+    max_score = ranked_shortlist[0]["score"] if ranked_shortlist else 1.0
+    for c in ranked_shortlist:
+        c["score"] = round(c["score"] / max_score, 4)
+
+    # Re-sort after rounding to enforce tie-break by candidate_id ascending (per submission spec)
+    ranked_shortlist.sort(key=lambda x: (-x["score"], x["candidate_id"]))
+    for idx, c in enumerate(ranked_shortlist):
+        c["rank"] = idx + 1
+
     # Create output dataframe
     output_data = []
     for c in ranked_shortlist:
         output_data.append({
             "candidate_id": c["candidate_id"],
             "rank": c["rank"],
-            "score": round(c["score"], 4),
+            "score": c["score"],
             "reasoning": c["reasoning"]
         })
         
