@@ -703,6 +703,12 @@ st.sidebar.markdown(f"""
 with st.spinner("Analyzing profiles and computing scores..."):
     # Rank candidates using our shared library
     ranked_candidates = ranker.rank_candidates(candidates_list, jd_text=jd_text)
+    
+    # Normalize scores relative to the top candidate in the entire ranked set (matching submission.csv)
+    if ranked_candidates:
+        max_score = ranked_candidates[0]["score"] if ranked_candidates[0]["score"] > 0 else 1.0
+        for c in ranked_candidates:
+            c["score"] = round(c["score"] / max_score, 4)
 
 # Filter ranked results based on slider controls (dynamic UI overrides)
 filtered_ranked = []
@@ -863,7 +869,7 @@ with tab_list:
                         "Name": c["name"],
                         "ID": c["candidate_id"],
                         "Rank": f"Rank {c['rank']}",
-                        "Score": f"{c['score']:.3f}",
+                        "Score": f"{c['score']:.4f}",
                         "Status": status_badge,
                         "Title": c["current_title"]
                     })
@@ -918,7 +924,7 @@ with tab_list:
                 "Current Company": c["current_company"],
                 "Experience": f"{c['years_exp']:.1f} Yrs",
                 "Location": c["location"],
-                "Score": f"{c['score']:.3f}",
+                "Score": f"{c['score']:.4f}",
                 "Notice Period": f"{signals.get('notice_period_days')} days",
                 "Reasoning Summary": c["reasoning"]
             })
@@ -963,7 +969,7 @@ with tab_list:
                 avg_score = np.mean([c["score"] for c in top_100])
                 st.markdown(f"<div style='margin-bottom: 1rem;'>💼 <b>Average Experience</b><br><span style='font-size: 1.5rem; font-weight: 700; color: #38BDF8;'>{avg_exp:.1f} Years</span></div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='margin-bottom: 1rem;'>📅 <b>Average Notice Period</b><br><span style='font-size: 1.5rem; font-weight: 700; color: #38BDF8;'>{avg_notice:.1f} Days</span></div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-bottom: 1rem;'>📈 <b>Average Fit Score</b><br><span style='font-size: 1.5rem; font-weight: 700; color: #00E5FF;'>{avg_score:.3f}</span></div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='margin-bottom: 1rem;'>📈 <b>Average Fit Score</b><br><span style='font-size: 1.5rem; font-weight: 700; color: #00E5FF;'>{avg_score:.4f}</span></div>", unsafe_allow_html=True)
             with sa2:
                 st.markdown("**📍 Top Locations**")
                 df_loc = pd.DataFrame(list(loc_counts.items()), columns=["Location", "Candidates"]).sort_values(by="Candidates", ascending=True).tail(5)
@@ -1095,7 +1101,7 @@ with tab_dive:
                         st.markdown(f"""
                             <div style="text-align: center; margin: 1rem 0; padding: 0.75rem; border-radius: 12px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.25);">
                                 <div style="font-size: 0.75rem; color:#9CA3AF; letter-spacing:0.05em; font-weight:600;">FIT SCORE</div>
-                                <div style="font-size: 1.8rem; font-weight: 800; color: #00E5FF; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);">{comp_cand['score']:.3f}</div>
+                                <div style="font-size: 1.8rem; font-weight: 800; color: #00E5FF; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);">{comp_cand['score']:.4f}</div>
                             </div>
                         """, unsafe_allow_html=True)
                         
