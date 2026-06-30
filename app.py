@@ -708,6 +708,7 @@ with st.spinner("Analyzing profiles and computing scores..."):
     if ranked_candidates:
         max_score = ranked_candidates[0]["score"] if ranked_candidates[0]["score"] > 0 else 1.0
         for c in ranked_candidates:
+            c["raw_score"] = c["score"]
             c["score"] = round(c["score"] / max_score, 4)
 
 # Filter ranked results based on slider controls (dynamic UI overrides)
@@ -1189,6 +1190,24 @@ with tab_dive:
                     """, unsafe_allow_html=True)
                     
             with c2:
+                # AI Score Profile showing both Normalized and Raw Scores
+                st.markdown(f"""
+                    <div style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; text-align: center;">
+                        <span style="font-size: 0.75rem; color: #9CA3AF; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">AI Recruiter Score Profile</span>
+                        <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 0.5rem;">
+                            <div>
+                                <div style="font-size: 0.7rem; color: #9CA3AF;">NORMALIZED FIT</div>
+                                <div style="font-size: 1.4rem; font-weight: 800; color: #00E5FF;">{cand_data['score']:.4f}</div>
+                            </div>
+                            <div style="border-left: 1px solid rgba(255,255,255,0.1); height: 30px;"></div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: #9CA3AF;">RAW SCORE</div>
+                                <div style="font-size: 1.4rem; font-weight: 800; color: #FBBF24;">{cand_data.get('raw_score', 0.0):.3f}</div>
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
                 st.markdown("### Platform Availability Envelope")
                 
                 # Custom neon styled availability badges
