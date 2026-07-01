@@ -660,14 +660,6 @@ with st.expander("⚙️ DISCOVERY ENGINE CONTROL CENTER & FILTERS", expanded=Tr
 
 # Handle loading data
 file_to_load = dataset_path
-is_using_sample = False
-
-if not os.path.exists(file_to_load) and not uploaded_file:
-    sample_path = "sample_candidates.jsonl"
-    if os.path.exists(sample_path):
-        file_to_load = sample_path
-        is_using_sample = True
-
 if uploaded_file:
     # Save uploaded file temporarily
     temp_path = "temp_uploaded_candidates.jsonl"
@@ -859,9 +851,6 @@ with st.expander("🔍 Programmatic Funnel & Filter Audit Log", expanded=False):
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
-if is_using_sample:
-    st.info("ℹ️ **Running in Demo Mode:** The cloud container is using a local sample dataset of 250 candidates. To test the system on your full database, please upload your `candidates.jsonl` file in the control center above.")
 
 # Create Tabs
 tab_list, tab_dive, tab_matcher, tab_traps = st.tabs(["📋 Candidate Shortlist", "🔍 Profile Deep Dive", "📄 Resume Matcher", "🛡️ Anomalies Audit"])
