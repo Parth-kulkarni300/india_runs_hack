@@ -672,13 +672,13 @@ with st.spinner("Loading candidate database and scanning for anomalies..."):
 
 if not candidates_list:
     st.error("""
-        ### ⚠️ System Database Required
-        The system could not locate the candidate database file.
+        ### 📥 Candidate Database Upload Required
+        To proceed with candidate discovery and ranking, please upload a candidate database file first.
         
-        **How to resolve this:**
-        1. Click on the **`DISCOVERY ENGINE CONTROL CENTER & FILTERS`** expander above.
-        2. Drag and drop your **`candidates.jsonl`** file into the **`Database Sample (.jsonl) -> Upload`** box.
-        3. The system will automatically ingest, scan for anomalies, and rank the candidates!
+        **Steps to upload:**
+        1. Expand the **`DISCOVERY ENGINE CONTROL CENTER & FILTERS`** panel above.
+        2. Upload your **`candidates.jsonl`** file into the **`Database Sample (.jsonl)`** box.
+        3. Once uploaded, the system will instantly scan, filter anomalies, and display the ranked shortlist.
     """)
     st.stop()
 
