@@ -660,6 +660,14 @@ with st.expander("⚙️ DISCOVERY ENGINE CONTROL CENTER & FILTERS", expanded=Tr
 
 # Handle loading data
 file_to_load = dataset_path
+is_using_sample = False
+
+if not os.path.exists(file_to_load) and not uploaded_file:
+    sample_path = "sample_candidates.jsonl"
+    if os.path.exists(sample_path):
+        file_to_load = sample_path
+        is_using_sample = True
+
 if uploaded_file:
     # Save uploaded file temporarily
     temp_path = "temp_uploaded_candidates.jsonl"
@@ -671,7 +679,15 @@ with st.spinner("Loading candidate database and scanning for anomalies..."):
     candidates_list, total_raw, total_hp, total_consulting = load_candidates(file_to_load, limit=load_limit)
 
 if not candidates_list:
-    st.error(f"Could not load candidates from path '{file_to_load}'. Please check the path or upload a file.")
+    st.error("""
+        ### ⚠️ System Database Required
+        The system could not locate the candidate database file.
+        
+        **How to resolve this:**
+        1. Click on the **`DISCOVERY ENGINE CONTROL CENTER & FILTERS`** expander above.
+        2. Drag and drop your **`candidates.jsonl`** file into the **`Database Sample (.jsonl) -> Upload`** box.
+        3. The system will automatically ingest, scan for anomalies, and rank the candidates!
+    """)
     st.stop()
 
 # Inject custom candidates into the active database pool
@@ -844,8 +860,8 @@ with st.expander("🔍 Programmatic Funnel & Filter Audit Log", expanded=False):
             </div>
             """, unsafe_allow_html=True)
 
-st.write("")
-st.write("")
+if is_using_sample:
+    st.info("ℹ️ **Running in Demo Mode:** The cloud container is using a local sample dataset of 250 candidates. To test the system on your full database, please upload your `candidates.jsonl` file in the control center above.")
 
 # Create Tabs
 tab_list, tab_dive, tab_matcher, tab_traps = st.tabs(["📋 Candidate Shortlist", "🔍 Profile Deep Dive", "📄 Resume Matcher", "🛡️ Anomalies Audit"])
